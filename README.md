@@ -8,6 +8,8 @@ A CLI tool for managing Git commit-msg hooks, implementing the same functionalit
 - Ensures Change-Id is placed correctly after specific tags (Bug, Depends-On, etc.)
 - Handles temporary commits (fixup!/squash!) without adding Change-Id
 - Follows Gerrit configuration options
+- Cleans commit messages by removing diff information, comments, and other unwanted content
+- Preserves important footer tags like Signed-off-by, Reviewed-by, etc.
 
 ## Installation
 
@@ -50,8 +52,25 @@ npm run build
 
 The tool follows these Git configuration options:
 
-- `gerrit.createChangeId` - Boolean to control whether to generate Change-Id
+- `gerrit.createChangeId` - Boolean to control whether to generate Change-Id (default: true)
 - `core.commentChar` - Defines the comment character (defaults to #)
+
+## Testing
+
+The project includes comprehensive tests to verify functionality:
+
+```bash
+npm test
+```
+
+Tests cover:
+
+- Normal commit message processing with Change-Id generation
+- Temporary commit handling (fixup!/squash!)
+- Existing Change-Id detection
+- Configuration option support
+- Message cleaning functionality
+- Custom comment character support
 
 ## Contributing
 

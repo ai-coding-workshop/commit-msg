@@ -9,5 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "dist"]
+  "include": ["packages/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist", "packages/*/dist"]
 }
