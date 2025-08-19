@@ -3,5 +3,11 @@
   "compilerOptions": {
     "module": "ESNext"
   },
-  "include": ["packages/*/src/**/*", "packages/*/test/**/*", "eslint.config.js"]
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/test/**/*",
+    "eslint.config.js",
+    ".lintstagedrc.cjs",
+    "packages/cli/scripts/*.js"
+  ]
 }

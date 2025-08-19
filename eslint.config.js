@@ -1,4 +1,3 @@
-import eslint from '@eslint/js';
 import pluginJs from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -10,13 +9,7 @@ const __dirname = dirname(__filename);
 
 export default [
   {
-    ignores: [
-      'dist/',
-      'node_modules/',
-      'eslint.config.js',
-      'packages/*/dist',
-      'scripts/',
-    ],
+    ignores: ['dist/', 'node_modules/', 'packages/*/dist', 'scripts/'],
   },
   pluginJs.configs.recommended,
   ...tseslint.configs['flat/recommended'],
@@ -32,11 +25,42 @@ export default [
     rules: {
       'no-console': 'off',
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_' },
+      ],
       'prefer-const': 'error',
       'no-var': 'error',
       quotes: ['error', 'single'],
       semi: ['error', 'always'],
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_' },
+      ],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      quotes: ['error', 'single'],
+      semi: ['error', 'always'],
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ];
