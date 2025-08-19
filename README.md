@@ -52,3 +52,7 @@ The tool follows these Git configuration options:
 
 - `gerrit.createChangeId` - Boolean to control whether to generate Change-Id
 - `core.commentChar` - Defines the comment character (defaults to #)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this project.
