@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist/
+packages/*/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+*.map
+
+# Temporary files
+*.tmp
+*.temp

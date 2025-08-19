@@ -1,0 +1,41 @@
+{
+  "name": "@ai-coding-workshop/commit-msg",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "commit-msg": "./packages/cli/dist/bin/commit-msg.js"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "postinstall": "npm run build",
+    "test": "npm run test --workspaces",
+    "format": "npx prettier --write packages/core/src/ packages/cli/src/ packages/cli/test/",
+    "lint": "npx eslint packages/core/src/ packages/cli/src/ packages/cli/test/",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "A CLI tool for managing Git commit-msg hooks",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "eslint": "^9.33.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "lint-staged": {
+    "*.{js,ts,json,md}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "eslint.config.js": ""
+  }
+}
