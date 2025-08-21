@@ -16,7 +16,17 @@ program
 program
   .command('install')
   .description('Install the commit-msg hook in the current Git repository')
-  .action(install);
+  .action(async () => {
+    try {
+      await install();
+    } catch (error) {
+      console.error(
+        'Error installing commit-msg hook:',
+        (error as Error).message
+      );
+      process.exit(1);
+    }
+  });
 
 program
   .command('exec')

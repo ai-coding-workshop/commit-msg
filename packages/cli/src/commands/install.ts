@@ -7,6 +7,10 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 
 async function install(): Promise<void> {
+  return installImpl();
+}
+
+async function installImpl(): Promise<void> {
   console.log('Installing commit-msg hook...');
 
   try {
@@ -18,7 +22,7 @@ async function install(): Promise<void> {
 
     if (gitResult.status !== 0) {
       console.error('Error: Not in a Git repository');
-      process.exit(1);
+      throw new Error('Not in a Git repository');
     }
 
     const gitDir = gitResult.stdout.trim();
@@ -90,8 +94,8 @@ async function install(): Promise<void> {
     console.log(`Hook installed at: ${hookPath}`);
   } catch (error) {
     console.error('Error installing commit-msg hook:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
-export { install };
+export { install, installImpl };
