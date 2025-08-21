@@ -79,32 +79,44 @@ describe('exec command utilities', () => {
       const message =
         'feat: add new feature\ndiff --git a/file b/file\nindex 1234567..89abcde 100644\n--- a/file\n+++ b/file\n@@ -1,1 +1,1 @@\n- old\n+ new';
       const result = cleanCommitMessage(message);
-      expect(result).toBe('feat: add new feature');
+      expect(result.message).toBe('feat: add new feature');
     });
 
     it('should remove comments', () => {
       const message =
         'feat: add new feature\n\n# This is a comment\nThis is content';
       const result = cleanCommitMessage(message, '#');
-      expect(result).toBe('feat: add new feature\n\nThis is content');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
     });
 
     it('should trim trailing whitespace from lines', () => {
       const message = 'feat: add new feature   \n\nThis is content  \n';
       const result = cleanCommitMessage(message, '#');
-      expect(result).toBe('feat: add new feature\n\nThis is content');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
     });
 
     it('should collapse multiple consecutive empty lines to one', () => {
       const message = 'feat: add new feature\n\n\n\nThis is content\n\n\n\nEnd';
       const result = cleanCommitMessage(message, '#');
-      expect(result).toBe('feat: add new feature\n\nThis is content\n\nEnd');
+      expect(result.message).toBe(
+        'feat: add new feature\n\nThis is content\n\nEnd'
+      );
     });
 
     it('should remove trailing empty lines', () => {
       const message = 'feat: add new feature\n\nThis is content\n\n\n';
       const result = cleanCommitMessage(message, '#');
-      expect(result).toBe('feat: add new feature\n\nThis is content');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+    });
+
+    it('should insert blank line between first and second lines when second line is not empty', () => {
+      const message =
+        'feat: add new feature\nThis is content\nThis is more content';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe(
+        'feat: add new feature\n\nThis is content\nThis is more content'
+      );
+      expect(result.shouldSave).toBe(true);
     });
   });
 

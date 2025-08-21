@@ -91,7 +91,8 @@ async function processCommitMessage(
   }
 ): Promise<{ message: string; shouldSave: boolean }> {
   // Clean the message (remove diff, Signed-off-by lines, comments, etc.)
-  const cleanedMessage = cleanCommitMessage(messageContent, config.commentChar);
+  const { message: cleanedMessage, shouldSave: cleanShouldSave } =
+    cleanCommitMessage(messageContent, config.commentChar);
 
   // Check if we need to insert a Change-Id
   if (!needsChangeId(cleanedMessage, config.createChangeId)) {
@@ -103,7 +104,7 @@ async function processCommitMessage(
     } else if (hasChangeId(cleanedMessage)) {
       console.log('Change-Id already exists, skipping generation');
     }
-    return { message: cleanedMessage, shouldSave: false };
+    return { message: cleanedMessage, shouldSave: cleanShouldSave };
   }
 
   // Generate and insert Change-Id
@@ -117,12 +118,12 @@ async function processCommitMessage(
  * Clean the commit message by removing unwanted content
  * @param message The commit message content
  * @param commentChar The comment character from Git config
- * @returns The cleaned commit message
+ * @returns Object containing the cleaned commit message and a flag indicating if it should be saved
  */
 function cleanCommitMessage(
   message: string,
   commentChar: string = '#'
-): string {
+): { message: string; shouldSave: boolean } {
   // Split message into lines
   const lines = message.split('\n');
 
@@ -130,6 +131,7 @@ function cleanCommitMessage(
   const processedLines = [];
   let foundDiff = false;
   let lastLineWasEmpty = false;
+  let shouldSave = false; // Track if any changes were made
 
   for (const line of lines) {
     // If we found a diff line, skip all remaining lines
@@ -172,8 +174,19 @@ function cleanCommitMessage(
     processedLines.pop();
   }
 
+  // Check if we need to insert a blank line between first and second lines
+  if (processedLines.length >= 2 && processedLines[1] !== '') {
+    // Insert a blank line between first and second lines
+    processedLines.splice(1, 0, '');
+    shouldSave = true;
+  }
+
   // Join lines back together
-  return processedLines.join('\n');
+  const cleanedMessage = processedLines.join('\n');
+
+  // Only need to save when there are real changes, such as:
+  // insert empty line after subject.
+  return { message: cleanedMessage, shouldSave: shouldSave };
 }
 
 /**
