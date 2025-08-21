@@ -15,6 +15,22 @@ type SpawnSyncReturns<T> = {
   error?: Error;
 };
 
+// Type definitions for fs mocking
+type FsExistsSyncMock = (path: fs.PathLike) => boolean;
+type FsReadFileSyncMock = (
+  path: fs.PathLike,
+  options: { encoding: string } | string
+) => string | Buffer;
+type FsWriteFileSyncMock = (
+  path: fs.PathLike,
+  data: string | Buffer,
+  options?: fs.WriteFileOptions
+) => void;
+type FsMkdirSyncMock = (
+  path: fs.PathLike,
+  options?: fs.MakeDirectoryOptions
+) => void;
+
 // Mock the file system and child_process modules
 vi.mock('fs');
 vi.mock('child_process');
@@ -240,9 +256,29 @@ describe('install command', () => {
         ) {
           return {
             stdout: absoluteHooksPath,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, absoluteHooksPath, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          const mockWorkDirRoot = '/path/to/repo';
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
@@ -493,7 +529,7 @@ describe('install command', () => {
       _path: fs.PathLike,
       _options: { encoding: string } | string
     ) => {
-      throw new Error('Could not read hook template');
+      throw new Error('Template file not found');
     }) as FsReadFileSyncMock);
 
     // Run the install command and expect it to throw an error
@@ -520,8 +556,10 @@ describe('getHooksDir function', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return default hooks directory when core.hooksPath is not set', () => {
-    // Mock git config command to return an error status
+  it('should return default hooks directory when core.hooksPath is not set and no existing directories found', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+
+    // Mock git commands
     vi.mocked(spawnSync).mockImplementation(
       (command: string, args: string[]) => {
         if (
@@ -539,6 +577,21 @@ describe('getHooksDir function', () => {
             signal: null,
           } as SpawnSyncReturns<string>;
         }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
         return {
           stdout: '',
           stderr: '',
@@ -551,11 +604,222 @@ describe('getHooksDir function', () => {
       }
     );
 
+    // Mock fs.existsSync to return false for both directories
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, '.husky')) return false;
+      if (filePath === path.join(mockWorkDirRoot, '.githooks')) return false;
+      return false;
+    }) as FsExistsSyncMock);
+
     // Mock console.log to avoid output during tests
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
     const hooksDir = getHooksDir(mockGitDir);
     expect(hooksDir).toBe(path.join(mockGitDir, 'hooks'));
+  });
+
+  it('should return .husky directory and set core.hooksPath when .husky directory exists', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+    const expectedHuskyPath = path.join(mockWorkDirRoot, '.husky');
+
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock fs.existsSync and fs.statSync
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === expectedHuskyPath) return true;
+      if (filePath === path.join(mockWorkDirRoot, '.githooks')) return false;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.statSync).mockImplementation((filePath: fs.PathLike) => {
+      if (filePath === expectedHuskyPath) {
+        return { isDirectory: () => true } as fs.Stats;
+      }
+      return { isDirectory: () => false } as fs.Stats;
+    });
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(expectedHuskyPath);
+  });
+
+  it('should return .githooks directory and set core.hooksPath when .githooks directory exists', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+    const expectedGithooksPath = path.join(mockWorkDirRoot, '.githooks');
+
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock fs.existsSync and fs.statSync
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, '.husky')) return false;
+      if (filePath === expectedGithooksPath) return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.statSync).mockImplementation((filePath: fs.PathLike) => {
+      if (filePath === expectedGithooksPath) {
+        return { isDirectory: () => true } as fs.Stats;
+      }
+      return { isDirectory: () => false } as fs.Stats;
+    });
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(expectedGithooksPath);
+  });
+
+  it('should prefer .husky directory over .githooks when both exist', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+    const expectedHuskyPath = path.join(mockWorkDirRoot, '.husky');
+
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock fs.existsSync and fs.statSync
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === expectedHuskyPath) return true;
+      if (filePath === path.join(mockWorkDirRoot, '.githooks')) return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.statSync).mockImplementation((filePath: fs.PathLike) => {
+      if (
+        filePath === expectedHuskyPath ||
+        filePath === path.join(mockWorkDirRoot, '.githooks')
+      ) {
+        return { isDirectory: () => true } as fs.Stats;
+      }
+      return { isDirectory: () => false } as fs.Stats;
+    });
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(expectedHuskyPath);
   });
 
   it('should return custom hooks directory when core.hooksPath is set (relative path)', () => {
@@ -647,8 +911,10 @@ describe('getHooksDir function', () => {
     expect(hooksDir).toBe(absoluteHooksPath);
   });
 
-  it('should return default hooks directory when core.hooksPath is empty', () => {
-    // Mock git config command to return an empty string with success status
+  it('should return default hooks directory when core.hooksPath is empty and no existing directories found', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+
+    // Mock git config command to return an empty string
     vi.mocked(spawnSync).mockImplementation(
       (command: string, args: string[]) => {
         if (
@@ -666,6 +932,21 @@ describe('getHooksDir function', () => {
             signal: null,
           } as SpawnSyncReturns<string>;
         }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
         return {
           stdout: '',
           stderr: '',
@@ -677,6 +958,13 @@ describe('getHooksDir function', () => {
         } as SpawnSyncReturns<string>;
       }
     );
+
+    // Mock fs.existsSync to return false for both directories
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, '.husky')) return false;
+      if (filePath === path.join(mockWorkDirRoot, '.githooks')) return false;
+      return false;
+    }) as FsExistsSyncMock);
 
     const hooksDir = getHooksDir(mockGitDir);
     expect(hooksDir).toBe(path.join(mockGitDir, 'hooks'));

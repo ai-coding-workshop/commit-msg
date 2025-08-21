@@ -12,23 +12,26 @@ import { spawnSync } from 'child_process';
  * @returns The hooks directory path
  */
 function getHooksDir(gitDir: string): string {
+  let hooksPath = '';
+
   // Check if core.hooksPath is set
   const gitConfigResult = spawnSync('git', ['config', 'core.hooksPath'], {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'ignore'],
   });
 
-  // If the command failed or returned nothing, use default
+  // If the command failed or returned nothing, check for existing directories
   if (gitConfigResult.status !== 0 || !gitConfigResult.stdout) {
-    console.log('core.hooksPath not set, using default hooks directory');
-    return path.join(gitDir, 'hooks');
+    console.log(
+      'core.hooksPath not set, checking for existing hooks directories'
+    );
+  } else {
+    hooksPath = gitConfigResult.stdout.trim();
   }
 
-  let hooksPath = gitConfigResult.stdout.trim();
-  // If core.hooksPath is not set, use gitDir/hooks
+  // If core.hooksPath is empty, check for existing directories
   if (!hooksPath) {
-    // Use default hooks directory
-    return path.join(gitDir, 'hooks');
+    hooksPath = checkForExistingHooksDir(gitDir);
   }
 
   // For husky, hooks templates are stored in .husky/_/ directory,
@@ -37,8 +40,14 @@ function getHooksDir(gitDir: string): string {
     hooksPath = hooksPath.replace(/\/_\/?$/, '');
   }
 
+  // If it's a relative path, join it with the git directory
   // If it's an absolute path, use it as is
   if (path.isAbsolute(hooksPath)) {
+    return hooksPath;
+  }
+
+  // Special case: if hooksPath is already in the format of gitDir/hooks, return it as is
+  if (hooksPath === path.join(gitDir, 'hooks')) {
     return hooksPath;
   }
 
@@ -58,6 +67,56 @@ function getHooksDir(gitDir: string): string {
 
   const workDirRoot = workDirRootResult.stdout.trim();
   return path.join(workDirRoot, hooksPath);
+}
+
+/**
+ * Check for existing hooks directories (.husky or .githooks) and return appropriate path
+ * @param gitDir The Git directory path
+ * @returns The hooks directory path
+ */
+function checkForExistingHooksDir(gitDir: string): string {
+  try {
+    const workDirRootResult = spawnSync(
+      'git',
+      ['rev-parse', '--show-toplevel'],
+      {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }
+    );
+
+    // Check if the command executed successfully
+    if (workDirRootResult.status !== 0 || !workDirRootResult.stdout) {
+      throw new Error('Failed to get working directory root');
+    }
+
+    const workDirRoot = workDirRootResult.stdout.trim();
+
+    // Define hooks directories to check in order of preference
+    const hooksDirectories = ['.husky/_', '.husky', '.githooks'];
+
+    // Loop through each hooks directory and check if it exists
+    for (const hooksDir of hooksDirectories) {
+      const hooksPath = path.join(workDirRoot, hooksDir);
+
+      if (fs.existsSync(hooksPath) && fs.statSync(hooksPath).isDirectory()) {
+        // Set core.hooksPath to the found directory and return the path
+        spawnSync('git', ['config', 'core.hooksPath', hooksDir], {
+          stdio: ['pipe', 'pipe', 'ignore'],
+        });
+        return hooksPath;
+      }
+    }
+
+    // If no existing hooks directories found, use default hooks directory
+    return path.join(gitDir, 'hooks');
+  } catch {
+    // If we can't determine the working directory root, use default
+    console.log(
+      'No existing hooks directories found, using default hooks directory'
+    );
+    return path.join(gitDir, 'hooks');
+  }
 }
 
 async function install(): Promise<void> {
@@ -115,4 +174,4 @@ async function install(): Promise<void> {
   }
 }
 
-export { install, getHooksDir };
+export { install, getHooksDir, checkForExistingHooksDir };

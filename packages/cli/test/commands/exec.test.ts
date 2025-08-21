@@ -58,8 +58,6 @@ describe('exec command utilities', () => {
         commentChar: '#',
       };
       const result = await processCommitMessage(message, config);
-      // When Change-Id already exists but CoDevelopedBy generation is enabled,
-      // and CLAUDECODE=1 is set in the test environment, we should still add CoDevelopedBy
       expect(result.message).toContain('Change-Id: I123456789abcdef');
       expect(result.shouldSave).toBe(false);
     });
