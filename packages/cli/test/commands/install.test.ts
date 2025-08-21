@@ -1,24 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawnSync, SpawnSyncReturns } from 'child_process';
-import { installImpl } from '../../src/commands/install';
+import { spawnSync } from 'child_process';
+import { install, getHooksDir } from '../../src/commands/install';
 
-// Types for fs module mocks
-type FsExistsSyncMock = (path: fs.PathLike) => boolean;
-type FsReadFileSyncMock = (
-  path: fs.PathLike,
-  options: { encoding: string } | string
-) => string;
-type FsWriteFileSyncMock = (
-  path: fs.PathLike,
-  data: string | Buffer,
-  options?: fs.WriteFileOptions
-) => void;
-type FsMkdirSyncMock = (
-  path: fs.PathLike,
-  options?: fs.MakeDirectoryOptions
-) => void;
+// Type definitions for child_process mocking
+type SpawnSyncReturns<T> = {
+  pid?: number;
+  output: Array<T | null>;
+  stdout: T;
+  stderr: T;
+  status: number | null;
+  signal: NodeJS.Signals | null;
+  error?: Error;
+};
 
 // Mock the file system and child_process modules
 vi.mock('fs');
@@ -53,9 +48,13 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockGitDir,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         if (
           command === 'git' &&
@@ -64,15 +63,23 @@ describe('install command', () => {
         ) {
           return {
             stdout: '',
+            stderr: 'core.hooksPath not set',
             status: 1,
             error: new Error('core.hooksPath not set'),
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
@@ -99,7 +106,7 @@ describe('install command', () => {
     }) as FsWriteFileSyncMock);
 
     // Run the install command
-    await installImpl();
+    await install();
 
     // Verify the hook was written to the correct location
     expect(fs.writeFileSync).toHaveBeenCalledWith(
@@ -110,6 +117,8 @@ describe('install command', () => {
   });
 
   it('should install commit-msg hook in custom hooks directory (relative path)', async () => {
+    const mockWorkDirRoot = '/path/to/repo';
+
     // Mock git commands
     vi.mocked(spawnSync).mockImplementation(
       (command: string, args: string[]) => {
@@ -120,9 +129,13 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockGitDir,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         if (
           command === 'git' &&
@@ -131,22 +144,45 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockHooksPath,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockHooksPath, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
     // Mock file system operations
     vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
       if (filePath === mockGitDir) return true;
-      if (filePath === path.join(mockGitDir, mockHooksPath)) return true;
+      if (filePath === path.join(mockWorkDirRoot, mockHooksPath)) return true;
       return false;
     }) as FsExistsSyncMock);
 
@@ -166,11 +202,11 @@ describe('install command', () => {
     }) as FsWriteFileSyncMock);
 
     // Run the install command
-    await installImpl();
+    await install();
 
     // Verify the hook was written to the correct location
     expect(fs.writeFileSync).toHaveBeenCalledWith(
-      path.join(mockGitDir, mockHooksPath, 'commit-msg'),
+      path.join(mockWorkDirRoot, mockHooksPath, 'commit-msg'),
       '# commit-msg hook template',
       { mode: 0o755 }
     );
@@ -189,9 +225,13 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockGitDir,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         if (
           command === 'git' &&
@@ -206,9 +246,13 @@ describe('install command', () => {
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
@@ -235,7 +279,7 @@ describe('install command', () => {
     }) as FsWriteFileSyncMock);
 
     // Run the install command
-    await installImpl();
+    await install();
 
     // Verify the hook was written to the correct location
     expect(fs.writeFileSync).toHaveBeenCalledWith(
@@ -256,9 +300,13 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockGitDir,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         if (
           command === 'git' &&
@@ -267,15 +315,23 @@ describe('install command', () => {
         ) {
           return {
             stdout: '',
+            stderr: 'core.hooksPath not set',
             status: 1,
             error: new Error('core.hooksPath not set'),
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
@@ -310,7 +366,7 @@ describe('install command', () => {
     }) as FsMkdirSyncMock);
 
     // Run the install command
-    await installImpl();
+    await install();
 
     // Verify the hooks directory was created
     expect(fs.mkdirSync).toHaveBeenCalledWith(path.join(mockGitDir, 'hooks'), {
@@ -336,20 +392,40 @@ describe('install command', () => {
         ) {
           return {
             stdout: '',
+            stderr: 'Not a Git repository',
             status: 1,
             error: new Error('Not a Git repository'),
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, '', 'Not a Git repository'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
+    // Mock process.exit to throw an error instead of exiting
+    const mockExit = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((code?: number) => {
+        throw new Error(`process.exit unexpectedly called with "${code}"`);
+      });
+
     // Run the install command and expect it to throw an error
-    await expect(installImpl()).rejects.toThrow('Not in a Git repository');
+    await expect(install()).rejects.toThrow(
+      'process.exit unexpectedly called with "1"'
+    );
+
+    // Restore the mock
+    mockExit.mockRestore();
   });
 
   it('should exit with error when template file cannot be read', async () => {
@@ -370,9 +446,13 @@ describe('install command', () => {
         ) {
           return {
             stdout: mockGitDir,
+            stderr: '',
             status: 0,
             error: undefined,
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         if (
           command === 'git' &&
@@ -381,15 +461,23 @@ describe('install command', () => {
         ) {
           return {
             stdout: '',
+            stderr: 'core.hooksPath not set',
             status: 1,
             error: new Error('core.hooksPath not set'),
-          } as SpawnSyncReturns<Buffer>;
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
         }
         return {
           stdout: '',
+          stderr: '',
           status: 0,
           error: undefined,
-        } as SpawnSyncReturns<Buffer>;
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
       }
     );
 
@@ -405,18 +493,192 @@ describe('install command', () => {
       _path: fs.PathLike,
       _options: { encoding: string } | string
     ) => {
-      throw new Error('Template file not found');
+      throw new Error('Could not read hook template');
     }) as FsReadFileSyncMock);
 
-    // Run the install command and expect it to call process.exit
-    await expect(installImpl()).rejects.toThrow(
+    // Run the install command and expect it to throw an error
+    await expect(install()).rejects.toThrow(
       'process.exit unexpectedly called with "1"'
     );
 
-    // Verify that process.exit was called with code 1
-    expect(mockExit).toHaveBeenCalledWith(1);
-
     // Restore the mock
     mockExit.mockRestore();
+  });
+});
+
+describe('getHooksDir function', () => {
+  const mockGitDir = '.git';
+  const mockHooksPath = '.husky/mock';
+
+  beforeEach(() => {
+    // Clear all mocks before each test
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Restore all mocks after each test
+    vi.restoreAllMocks();
+  });
+
+  it('should return default hooks directory when core.hooksPath is not set', () => {
+    // Mock git config command to return an error status
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock console.log to avoid output during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(path.join(mockGitDir, 'hooks'));
+  });
+
+  it('should return custom hooks directory when core.hooksPath is set (relative path)', () => {
+    const mockWorkDirRoot = '/path/to/repo';
+
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: mockHooksPath,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockHooksPath, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(path.join(mockWorkDirRoot, mockHooksPath));
+  });
+
+  it('should return custom hooks directory when core.hooksPath is set (absolute path)', () => {
+    const absoluteHooksPath = '/absolute/path/to/hooks';
+
+    // Mock git config command to return an absolute path
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: absoluteHooksPath,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, absoluteHooksPath, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(absoluteHooksPath);
+  });
+
+  it('should return default hooks directory when core.hooksPath is empty', () => {
+    // Mock git config command to return an empty string with success status
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, '', ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    const hooksDir = getHooksDir(mockGitDir);
+    expect(hooksDir).toBe(path.join(mockGitDir, 'hooks'));
   });
 });
