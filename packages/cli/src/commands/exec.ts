@@ -109,7 +109,9 @@ async function processCommitMessage(
 
   // Generate and insert Change-Id
   const changeId = generateChangeId(cleanedMessage);
-  const messageWithChangeId = insertChangeId(cleanedMessage, changeId);
+  const messageWithChangeId = insertTrailers(cleanedMessage, {
+    ChangeId: changeId,
+  });
 
   return { message: messageWithChangeId, shouldSave: true };
 }
@@ -360,20 +362,28 @@ function generateChangeId(message: string): string {
 }
 
 /**
- * Insert the Change-Id into the commit message at the correct position
+ * Insert trailers into the commit message at the correct position
  * @param message The commit message content
- * @param changeId The Change-Id to insert
- * @returns The commit message with the inserted Change-Id
+ * @param trailers An object containing trailers to insert (currently only supports ChangeId)
+ * @returns The commit message with the inserted trailers
  */
-function insertChangeId(message: string, changeId: string): string {
+function insertTrailers(
+  message: string,
+  trailers: { ChangeId?: string }
+): string {
   const lines = message.split('\n');
-  const changeIdLine = `Change-Id: ${changeId}`;
+  const trailerLines: string[] = [];
+
+  // Convert trailer object to lines
+  if (trailers.ChangeId) {
+    trailerLines.push(`Change-Id: ${trailers.ChangeId}`);
+  }
 
   // Output array for the processed lines
   const outputLines = [];
 
   // Trailer related variables
-  const trailers = [];
+  const existingTrailers = [];
   let inTrailerSection = false;
 
   // Regex patterns for trailer identification
@@ -386,10 +396,10 @@ function insertChangeId(message: string, changeId: string): string {
     // Check for empty line
     if (line === '') {
       inTrailerSection = true;
-      if (trailers.length > 0) {
+      if (existingTrailers.length > 0) {
         // Add all content lines to output
-        outputLines.push(...trailers);
-        trailers.length = 0; // Clear trailers array
+        outputLines.push(...existingTrailers);
+        existingTrailers.length = 0; // Clear trailers array
       }
       // Add empty line to output
       outputLines.push(line);
@@ -409,15 +419,15 @@ function insertChangeId(message: string, changeId: string): string {
       trailerCommentRegex1.test(line) ||
       trailerCommentRegex2.test(line)
     ) {
-      // This is a trailer, add to trailers array
-      trailers.push(line);
+      // This is a trailer, add to existingTrailers array
+      existingTrailers.push(line);
     } else {
       // This is not a trailer
       // If we were in trailer section and found non-trailer,
       // add all trailers to output and mark that we're no longer in trailer section
-      if (trailers.length > 0) {
-        outputLines.push(...trailers);
-        trailers.length = 0;
+      if (existingTrailers.length > 0) {
+        outputLines.push(...existingTrailers);
+        existingTrailers.length = 0;
       }
       inTrailerSection = false;
       // Add this non-trailer line to output
@@ -425,14 +435,14 @@ function insertChangeId(message: string, changeId: string): string {
     }
   }
 
-  // If we still have trailers in the array, they are real trailers
+  // If we still have existingTrailers in the array, they are real trailers
   // Need to check each trailer to see if it's a comment or not
-  if (trailers.length > 0) {
+  if (existingTrailers.length > 0) {
     // Find the first non-comment trailer
     let firstNonCommentIndex = -1;
-    for (let i = 0; i < trailers.length; i++) {
-      const trailer = trailers[i];
-      // If it's not a comment, this is where we insert the Change-Id
+    for (let i = 0; i < existingTrailers.length; i++) {
+      const trailer = existingTrailers[i];
+      // If it's not a comment, this is where we insert the new trailers
       if (
         !trailerCommentRegex1.test(trailer) &&
         !trailerCommentRegex2.test(trailer)
@@ -443,19 +453,25 @@ function insertChangeId(message: string, changeId: string): string {
     }
 
     if (firstNonCommentIndex === -1) {
-      // All trailers are comments, add Change-Id at the end
-      outputLines.push(...trailers);
-      outputLines.push(changeIdLine);
+      // All trailers are comments, add new trailers at the end
+      outputLines.push(...existingTrailers);
+      if (trailerLines.length > 0) {
+        outputLines.push(...trailerLines);
+      }
     } else {
-      // Insert Change-Id before the first non-comment trailer
-      outputLines.push(...trailers.slice(0, firstNonCommentIndex));
-      outputLines.push(changeIdLine);
-      outputLines.push(...trailers.slice(firstNonCommentIndex));
+      // Insert new trailers before the first non-comment trailer
+      outputLines.push(...existingTrailers.slice(0, firstNonCommentIndex));
+      if (trailerLines.length > 0) {
+        outputLines.push(...trailerLines);
+      }
+      outputLines.push(...existingTrailers.slice(firstNonCommentIndex));
     }
   } else {
-    // No trailers found, just add Change-Id at the end
-    outputLines.push('');
-    outputLines.push(changeIdLine);
+    // No existing trailers found, just add new trailers at the end
+    if (trailerLines.length > 0) {
+      outputLines.push('');
+      outputLines.push(...trailerLines);
+    }
   }
 
   return outputLines.join('\n');
@@ -469,5 +485,5 @@ export {
   hasChangeId,
   needsChangeId,
   generateChangeId,
-  insertChangeId,
+  insertTrailers,
 };

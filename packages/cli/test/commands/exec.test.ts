@@ -6,7 +6,7 @@ import {
   hasChangeId,
   needsChangeId,
   generateChangeId,
-  insertChangeId,
+  insertTrailers,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -164,11 +164,11 @@ describe('exec command utilities', () => {
     });
   });
 
-  describe('insertChangeId', () => {
+  describe('insertTrailers', () => {
     it('should insert Change-Id at the end when no trailers exist', () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
       const changeId = 'I123456789abcdef0123456789abcdef01234567';
-      const result = insertChangeId(message, changeId);
+      const result = insertTrailers(message, { ChangeId: changeId });
       const lines = result.split('\n');
       expect(lines[lines.length - 2]).toBe('');
       expect(lines[lines.length - 1]).toBe(`Change-Id: ${changeId}`);
@@ -178,7 +178,7 @@ describe('exec command utilities', () => {
       const message =
         'feat: add new feature\n\nThis is a new feature\n\nSigned-off-by: user@example.com';
       const changeId = 'I123456789abcdef0123456789abcdef01234567';
-      const result = insertChangeId(message, changeId);
+      const result = insertTrailers(message, { ChangeId: changeId });
       const lines = result.split('\n');
 
       // Find positions
@@ -199,7 +199,7 @@ describe('exec command utilities', () => {
       const message =
         'feat: add new feature\n\nThis is a new feature\n\n[Issue: 123]\nSigned-off-by: user@example.com';
       const changeId = 'I123456789abcdef0123456789abcdef01234567';
-      const result = insertChangeId(message, changeId);
+      const result = insertTrailers(message, { ChangeId: changeId });
       const lines = result.split('\n');
 
       // Find positions
@@ -221,7 +221,7 @@ describe('exec command utilities', () => {
       const message =
         'feat: add new feature\n\nThis is a new feature\n\n[Issue: 123]\n(Additional info)';
       const changeId = 'I123456789abcdef0123456789abcdef01234567';
-      const result = insertChangeId(message, changeId);
+      const result = insertTrailers(message, { ChangeId: changeId });
       const lines = result.split('\n');
 
       // Find positions
