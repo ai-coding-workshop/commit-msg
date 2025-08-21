@@ -255,5 +255,124 @@ describe('exec command utilities', () => {
       // Change-Id should be at the end
       expect(changeIdIndex).toBe(lines.length - 1);
     });
+
+    it('should insert Co-developed-by when CoDevelopedBy is provided', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const coDevelopedBy = 'Foo <noreply@example.com>';
+      const result = insertTrailers(message, { CoDevelopedBy: coDevelopedBy });
+      const lines = result.split('\n');
+      expect(lines[lines.length - 2]).toBe('');
+      expect(lines[lines.length - 1]).toBe(`Co-developed-by: ${coDevelopedBy}`);
+    });
+
+    it('should not insert Co-developed-by when CoDevelopedBy is empty string', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const result = insertTrailers(message, { CoDevelopedBy: '' });
+      const lines = result.split('\n');
+      // Should not have Co-developed-by trailer
+      expect(lines.some((line) => line.startsWith('Co-developed-by:'))).toBe(
+        false
+      );
+    });
+
+    it('should not insert Co-developed-by when CoDevelopedBy is not provided', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const result = insertTrailers(message, {});
+      const lines = result.split('\n');
+      // Should not have Co-developed-by trailer
+      expect(lines.some((line) => line.startsWith('Co-developed-by:'))).toBe(
+        false
+      );
+    });
+
+    it('should insert Co-developed-by before non-comment trailers', () => {
+      const message =
+        'feat: add new feature\n\nThis is a new feature\n\nSigned-off-by: user@example.com';
+      const coDevelopedBy = 'Foo <noreply@example.com>';
+      const result = insertTrailers(message, { CoDevelopedBy: coDevelopedBy });
+      const lines = result.split('\n');
+
+      // Find positions
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+      const signedOffIndex = lines.findIndex((line) =>
+        line.startsWith('Signed-off-by:')
+      );
+
+      // Co-developed-by should come before Signed-off-by
+      expect(coDevelopedIndex).toBeLessThan(signedOffIndex);
+      // There should be an empty line before Co-developed-by
+      expect(lines[coDevelopedIndex - 1]).toBe('');
+    });
+
+    it('should insert Co-developed-by after comment trailers but before non-comment trailers', () => {
+      const message =
+        'feat: add new feature\n\nThis is a new feature\n\n[Issue: 123]\nSigned-off-by: user@example.com';
+      const coDevelopedBy = 'Foo <noreply@example.com>';
+      const result = insertTrailers(message, { CoDevelopedBy: coDevelopedBy });
+      const lines = result.split('\n');
+
+      // Find positions
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+      const issueIndex = lines.findIndex((line) => line === '[Issue: 123]');
+      const signedOffIndex = lines.findIndex((line) =>
+        line.startsWith('Signed-off-by:')
+      );
+
+      // [Issue: 123] comment should come before Co-developed-by
+      expect(issueIndex).toBeLessThan(coDevelopedIndex);
+      // Co-developed-by should come before Signed-off-by
+      expect(coDevelopedIndex).toBeLessThan(signedOffIndex);
+    });
+
+    it('should insert both Change-Id and Co-developed-by with correct order', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const changeId = 'I123456789abcdef0123456789abcdef01234567';
+      const coDevelopedBy = 'Foo <noreply@example.com>';
+      const result = insertTrailers(message, {
+        ChangeId: changeId,
+        CoDevelopedBy: coDevelopedBy,
+      });
+      const lines = result.split('\n');
+
+      // Find positions
+      const changeIdIndex = lines.findIndex((line) =>
+        line.startsWith('Change-Id:')
+      );
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+
+      // Change-Id should come before Co-developed-by
+      expect(changeIdIndex).toBeLessThan(coDevelopedIndex);
+      expect(lines[changeIdIndex]).toBe(`Change-Id: ${changeId}`);
+      expect(lines[coDevelopedIndex]).toBe(`Co-developed-by: ${coDevelopedBy}`);
+    });
+
+    it('should insert Co-developed-by at the end when all trailers are comments', () => {
+      const message =
+        'feat: add new feature\n\nThis is a new feature\n\n[Issue: 123]\n(Additional info)';
+      const coDevelopedBy = 'Foo <noreply@example.com>';
+      const result = insertTrailers(message, { CoDevelopedBy: coDevelopedBy });
+      const lines = result.split('\n');
+
+      // Find positions
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+      const issueIndex = lines.findIndex((line) => line === '[Issue: 123]');
+      const additionalInfoIndex = lines.findIndex(
+        (line) => line === '(Additional info)'
+      );
+
+      // Both comment trailers should come before Co-developed-by
+      expect(issueIndex).toBeLessThan(coDevelopedIndex);
+      expect(additionalInfoIndex).toBeLessThan(coDevelopedIndex);
+      // Co-developed-by should be at the end
+      expect(coDevelopedIndex).toBe(lines.length - 1);
+    });
   });
 });
