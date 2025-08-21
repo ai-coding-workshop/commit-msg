@@ -105,7 +105,62 @@ function getGitConfig(): {
  * @returns The CoDevelopedBy value or empty string if not configured
  */
 function getCoDevelopedBy(): string {
-  // TODO: Implement proper CoDevelopedBy retrieval logic
+  // Define environment variable configurations and their corresponding CoDevelopedBy values
+  // Format: ["key=value", "co-developed-by-string"]
+  const envConfigs: [string, string][] = [
+    // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
+    ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
+    ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
+    // Check env variables for IDEs
+    ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
+    ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
+  ];
+
+  // Check each environment configuration in order
+  for (const [envConfig, coDevelopedBy] of envConfigs) {
+    // Parse the environment configuration
+    const equalIndex = envConfig.indexOf('=');
+    let key: string;
+    let expectedValue: string | null = null;
+
+    if (equalIndex === -1) {
+      // No '=' found, just a key
+      key = envConfig;
+    } else {
+      // Split into key and value
+      key = envConfig.substring(0, equalIndex);
+      expectedValue = envConfig.substring(equalIndex + 1);
+    }
+
+    // Check if the environment variable exists
+    const actualValue = process.env[key];
+
+    if (actualValue === undefined) {
+      // Key doesn't exist, continue to next configuration
+      continue;
+    }
+
+    // First check for exact match
+    if (
+      expectedValue !== null &&
+      expectedValue !== '*' &&
+      actualValue === expectedValue
+    ) {
+      return coDevelopedBy;
+    }
+
+    // Special case: if the actual environment variable value is '*', treat it as a wildcard match
+    if (actualValue === '*') {
+      return coDevelopedBy;
+    }
+
+    // If expectedValue is null or '*', we only check for key existence
+    if (expectedValue === null || expectedValue === '*') {
+      return coDevelopedBy;
+    }
+  }
+
+  // Return empty string if none of the environment configurations match
   return '';
 }
 
@@ -324,31 +379,31 @@ function needsChangeId(message: string, createChangeId: boolean): boolean {
 }
 
 /**
- * Check if the commit message needs a Change-Id to be inserted
+ * Check if the commit message needs a Co-developed-by to be inserted
  * @param message The commit message content
- * @param createChangeId Configuration flag indicating if Change-Id generation is enabled
- * @returns True if Change-Id should be inserted
+ * @param createCoDevelopedBy Configuration flag indicating if Co-developed-by generation is enabled
+ * @returns True if Co-developed-by should be inserted
  */
 function needsCoDevelopedBy(
   message: string,
   createCoDevelopedBy: boolean
 ): boolean {
-  // If Change-Id generation is disabled, don't insert Change-Id
+  // If Co-developed-by generation is disabled, don't insert Co-developed-by
   if (!createCoDevelopedBy) {
     return false;
   }
 
-  // If Change-Id already exists, don't insert another one
+  // If Co-developed-by already exists, don't insert another one
   if (hasCoDevelopedBy(message)) {
     return false;
   }
 
-  // If this is a temporary commit (fixup!/squash!), don't insert Change-Id
+  // If this is a temporary commit (fixup!/squash!), don't insert Co-developed-by
   if (isTemporaryCommit(message)) {
     return false;
   }
 
-  // Otherwise, we need to insert a Change-Id
+  // Otherwise, we need to insert a Co-developed-by
   return true;
 }
 
@@ -603,4 +658,5 @@ export {
   needsChangeId,
   generateChangeId,
   insertTrailers,
+  getCoDevelopedBy,
 };
