@@ -40,7 +40,11 @@ describe('exec command utilities', () => {
   describe('processCommitMessage', () => {
     it('should not modify message when Change-Id generation is disabled', async () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
-      const config = { createChangeId: false, commentChar: '#' };
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDeveloper: true,
+      };
       const result = await processCommitMessage(message, config);
       expect(result.message).toBe(message);
       expect(result.shouldSave).toBe(false);
@@ -48,7 +52,11 @@ describe('exec command utilities', () => {
 
     it('should not modify message when Change-Id already exists', async () => {
       const message = 'feat: add new feature\n\nChange-Id: I123456789abcdef';
-      const config = { createChangeId: true, commentChar: '#' };
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDeveloper: true,
+      };
       const result = await processCommitMessage(message, config);
       expect(result.message).toBe(message);
       expect(result.shouldSave).toBe(false);
@@ -56,7 +64,11 @@ describe('exec command utilities', () => {
 
     it('should not modify message for temporary commits', async () => {
       const message = 'fixup! feat: add new feature\n\nThis is a fixup';
-      const config = { createChangeId: true, commentChar: '#' };
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDeveloper: true,
+      };
       const result = await processCommitMessage(message, config);
       expect(result.message).toBe(message);
       expect(result.shouldSave).toBe(false);
@@ -64,7 +76,11 @@ describe('exec command utilities', () => {
 
     it('should add Change-Id when needed', async () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
-      const config = { createChangeId: true, commentChar: '#' };
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDeveloper: true,
+      };
       const result = await processCommitMessage(message, config);
       expect(result.message).toContain('Change-Id:');
       // Check that the original content is preserved

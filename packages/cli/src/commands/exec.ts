@@ -42,16 +42,21 @@ async function exec(messageFile: string): Promise<void> {
  * Get Git configuration options
  * @returns Object containing Git configuration options
  */
-function getGitConfig(): { createChangeId: boolean; commentChar: string } {
+function getGitConfig(): {
+  createChangeId: boolean;
+  commentChar: string;
+  createCoDevelopedBy: boolean;
+} {
   // Default values
   let createChangeId = true;
   let commentChar = '#';
+  let createCoDevelopedBy = true;
 
   try {
     // Get gerrit.createChangeId config
     const createChangeIdResult = spawnSync(
       'git',
-      ['config', 'gerrit.createChangeId'],
+      ['config', '--bool', 'gerrit.createChangeId'],
       {
         encoding: 'utf8',
       }
@@ -69,12 +74,39 @@ function getGitConfig(): { createChangeId: boolean; commentChar: string } {
     if (commentCharResult.stdout.trim()) {
       commentChar = commentCharResult.stdout.trim();
     }
-  } catch (_error) {
+
+    // Get commit-msg.createCoDevelopedBy config
+    const createCoDevelopedByResult = spawnSync(
+      'git',
+      ['config', '--bool', 'commit-msg.coDevelopedBy'],
+      {
+        encoding: 'utf8',
+      }
+    );
+
+    if (createCoDevelopedByResult.stdout.trim() === 'false') {
+      createCoDevelopedBy = false;
+    }
+  } catch (error) {
     // Use default values if git config commands fail
     console.warn('Warning: Could not read Git configuration, using defaults');
+    console.debug('Git config error:', error);
   }
 
-  return { createChangeId, commentChar };
+  return {
+    createChangeId,
+    commentChar,
+    createCoDevelopedBy,
+  };
+}
+
+/**
+ * Get the CoDevelopedBy value
+ * @returns The CoDevelopedBy value or empty string if not configured
+ */
+function getCoDevelopedBy(): string {
+  // TODO: Implement proper CoDevelopedBy retrieval logic
+  return '';
 }
 
 /**
@@ -85,14 +117,28 @@ function getGitConfig(): { createChangeId: boolean; commentChar: string } {
  */
 async function processCommitMessage(
   messageContent: string,
-  config: { createChangeId: boolean; commentChar: string } = {
+  config: {
+    createChangeId: boolean;
+    commentChar: string;
+    createCoDevelopedBy: boolean;
+  } = {
     createChangeId: true,
     commentChar: '#',
+    createCoDevelopedBy: true,
   }
 ): Promise<{ message: string; shouldSave: boolean }> {
   // Clean the message (remove diff, Signed-off-by lines, comments, etc.)
   const { message: cleanedMessage, shouldSave: cleanShouldSave } =
     cleanCommitMessage(messageContent, config.commentChar);
+
+  // Generate and insert Change-Id and CoDevelopedBy if configured
+  const trailers: { ChangeId?: string; CoDevelopedBy?: string } = {};
+  if (config.createChangeId) {
+    trailers.ChangeId = generateChangeId(cleanedMessage);
+  }
+  if (config.createCoDevelopedBy) {
+    trailers.CoDevelopedBy = getCoDevelopedBy();
+  }
 
   // Check if we need to insert a Change-Id
   if (!needsChangeId(cleanedMessage, config.createChangeId)) {
@@ -104,14 +150,30 @@ async function processCommitMessage(
     } else if (hasChangeId(cleanedMessage)) {
       console.log('Change-Id already exists, skipping generation');
     }
+    trailers.ChangeId = undefined;
+  }
+
+  // Check if we need to insert a CoDevelopedBy
+  if (!needsCoDevelopedBy(cleanedMessage, config.createCoDevelopedBy)) {
+    // Log specific reason for not inserting Co-developed-by
+    if (!config.createCoDevelopedBy) {
+      console.log('Co-developed-by generation disabled by configuration');
+    } else if (isTemporaryCommit(cleanedMessage)) {
+      console.log(
+        'Temporary commit detected, skipping Co-developed-by generation'
+      );
+    } else if (hasCoDevelopedBy(cleanedMessage)) {
+      console.log('Co-developed-by already exists, skipping generation');
+    }
+    trailers.CoDevelopedBy = undefined;
+  }
+
+  // Do not need to insert anything
+  if (!trailers.CoDevelopedBy && !trailers.ChangeId) {
     return { message: cleanedMessage, shouldSave: cleanShouldSave };
   }
 
-  // Generate and insert Change-Id
-  const changeId = generateChangeId(cleanedMessage);
-  const messageWithChangeId = insertTrailers(cleanedMessage, {
-    ChangeId: changeId,
-  });
+  const messageWithChangeId = insertTrailers(cleanedMessage, trailers);
 
   return { message: messageWithChangeId, shouldSave: true };
 }
@@ -220,6 +282,22 @@ function hasChangeId(message: string): boolean {
 }
 
 /**
+ * Check if the commit message already has a Co-developed-by
+ * @param message The commit message content
+ * @returns True if Co-developed-by exists
+ */
+function hasCoDevelopedBy(message: string): boolean {
+  const lines = message.split('\n');
+  for (const line of lines) {
+    if (line.toLowerCase().startsWith('co-developed-by:')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Check if the commit message needs a Change-Id to be inserted
  * @param message The commit message content
  * @param createChangeId Configuration flag indicating if Change-Id generation is enabled
@@ -233,6 +311,35 @@ function needsChangeId(message: string, createChangeId: boolean): boolean {
 
   // If Change-Id already exists, don't insert another one
   if (hasChangeId(message)) {
+    return false;
+  }
+
+  // If this is a temporary commit (fixup!/squash!), don't insert Change-Id
+  if (isTemporaryCommit(message)) {
+    return false;
+  }
+
+  // Otherwise, we need to insert a Change-Id
+  return true;
+}
+
+/**
+ * Check if the commit message needs a Change-Id to be inserted
+ * @param message The commit message content
+ * @param createChangeId Configuration flag indicating if Change-Id generation is enabled
+ * @returns True if Change-Id should be inserted
+ */
+function needsCoDevelopedBy(
+  message: string,
+  createCoDevelopedBy: boolean
+): boolean {
+  // If Change-Id generation is disabled, don't insert Change-Id
+  if (!createCoDevelopedBy) {
+    return false;
+  }
+
+  // If Change-Id already exists, don't insert another one
+  if (hasCoDevelopedBy(message)) {
     return false;
   }
 
@@ -364,19 +471,23 @@ function generateChangeId(message: string): string {
 /**
  * Insert trailers into the commit message at the correct position
  * @param message The commit message content
- * @param trailers An object containing trailers to insert (currently only supports ChangeId)
+ * @param trailers An object containing trailers to insert (supports ChangeId and CoDevelopedBy)
  * @returns The commit message with the inserted trailers
  */
 function insertTrailers(
   message: string,
-  trailers: { ChangeId?: string }
+  trailers: { ChangeId?: string; CoDevelopedBy?: string }
 ): string {
   const lines = message.split('\n');
   const trailerLines: string[] = [];
 
   // Convert trailer object to lines
+  // When both ChangeId and CoDevelopedBy exist, ChangeId should come first
   if (trailers.ChangeId) {
     trailerLines.push(`Change-Id: ${trailers.ChangeId}`);
+  }
+  if (trailers.CoDevelopedBy) {
+    trailerLines.push(`Co-developed-by: ${trailers.CoDevelopedBy}`);
   }
 
   // Output array for the processed lines
@@ -459,7 +570,13 @@ function insertTrailers(
         outputLines.push(...trailerLines);
       }
     } else {
-      // Insert new trailers before the first non-comment trailer
+      // Special handling for CoDevelopedBy trailer placement
+      // If ChangeId is empty, don't insert ChangeId trailer
+      // Check if the first existing trailer is a ChangeId
+      const firstTrailer = existingTrailers[firstNonCommentIndex];
+      if (firstTrailer.startsWith('Change-Id:')) {
+        firstNonCommentIndex++;
+      }
       outputLines.push(...existingTrailers.slice(0, firstNonCommentIndex));
       if (trailerLines.length > 0) {
         outputLines.push(...trailerLines);
