@@ -128,16 +128,44 @@ async function install(): Promise<void> {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
 
-  // If the command failed or returned nothing, exit with error
+  let hooksDir: string = '';
+
+  // If the command failed or returned nothing, check for global core.hooksPath
   if (gitDirResult.status !== 0 || !gitDirResult.stdout) {
-    console.error('Error: Not in a Git repository');
-    process.exit(1);
+    // Check if global core.hooksPath is set
+    const globalHooksPathResult = spawnSync(
+      'git',
+      ['config', 'core.hooksPath'],
+      {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }
+    );
+
+    // If global core.hooksPath is set, use it
+    if (globalHooksPathResult.status === 0 && globalHooksPathResult.stdout) {
+      hooksDir = globalHooksPathResult.stdout.trim();
+    }
+
+    // Check if hooksDir is set and is absolute
+    if (!hooksDir) {
+      console.error(
+        'Error: Not in a Git repository and no global core.hooksPath set'
+      );
+      console.error('Could not determine directory to install commit-msg hook');
+      process.exit(1);
+    } else if (!path.isAbsolute(hooksDir)) {
+      console.error(
+        `Error: relative core.hooksPath without a git workdir: ${hooksDir}`
+      );
+      console.error('Could not determine directory to install commit-msg hook');
+      process.exit(1);
+    }
+  } else {
+    const gitDir = gitDirResult.stdout.trim();
+    // Get the hooks directory
+    hooksDir = getHooksDir(gitDir);
   }
-
-  const gitDir = gitDirResult.stdout.trim();
-
-  // Get the hooks directory
-  const hooksDir = getHooksDir(gitDir);
 
   const hookPath = path.join(hooksDir, 'commit-msg');
 
