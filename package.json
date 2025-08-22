@@ -1,6 +1,6 @@
 {
   "name": "@ai-coding-workshop/commit-msg",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
     "commit-msg": "./packages/cli/dist/bin/commit-msg.js"

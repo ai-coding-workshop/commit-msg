@@ -89,3 +89,15 @@ Each package uses TypeScript compiler (tsc) for compilation.
 4. Commit changes (pre-commit hooks will automatically format and lint)
 
 The pre-commit hooks ensure code quality by running ESLint and Prettier on staged files before each commit.
+
+## Version Management
+
+This project uses npm version management with a monorepo structure. To update the version:
+
+1. Update the root package version: `npm version [major|minor|patch] --no-git-tag-version`
+2. Update workspace package versions: `npm version [major|minor|patch] --no-git-tag-version --workspace=@commit-msg/cli` and `npm version [major|minor|patch] --no-git-tag-version --workspace=@commit-msg/core`
+3. Build the project: `npm run build`
+4. Optionally create a git tag: `git tag v<version>`
+5. Push changes and tags: `git push && git push --tags`
+
+The CLI tool dynamically reads its version from package.json, so the `--version` parameter will always show the current version.

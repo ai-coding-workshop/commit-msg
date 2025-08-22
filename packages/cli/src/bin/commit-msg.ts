@@ -5,13 +5,14 @@
 import { Command } from 'commander';
 import { install } from '../commands/install';
 import { exec } from '../commands/exec';
+const { version } = require('../../package.json');
 
 const program = new Command();
 
 program
   .name('commit-msg')
   .description('CLI tool for managing Git commit-msg hooks')
-  .version('1.0.0');
+  .version(version);
 
 program
   .command('install')
