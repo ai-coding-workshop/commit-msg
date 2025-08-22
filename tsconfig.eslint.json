@@ -4,10 +4,10 @@
     "module": "ESNext"
   },
   "include": [
-    "packages/*/src/**/*",
-    "packages/*/test/**/*",
+    "src/**/*",
+    "test/**/*",
     "eslint.config.js",
     ".lintstagedrc.cjs",
-    "packages/cli/scripts/*.js"
+    "scripts/*.js"
   ]
 }

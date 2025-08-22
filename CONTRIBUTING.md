@@ -35,33 +35,33 @@ The installation process automatically sets up the pre-commit hooks through the 
 
 ## Project Architecture
 
-This project follows a single-package structure:
+This project follows a simplified single-package structure:
 
 ```
 commit-msg/
-├── packages/
-│   └── cli/          # Command-line interface and core functionality
+├── src/              # Source code
+│   ├── bin/           # Entry point scripts
+│   ├── commands/      # Command implementations
+│   ├── services/      # Business logic services
+│   └── utils/         # Utility functions
+├── dist/             # Compiled output
 ├── scripts/          # Build and utility scripts
-└── docs/             # Documentation
+├── templates/        # Template files
+└── test/             # Test files
 ```
 
-### Package Structure
+### Structure Overview
 
-1. **@commit-msg/cli**: Contains all functionality including the command-line interface, user-facing commands, and core logic for commit message processing and hook functionality
+Contains all functionality including the command-line interface, user-facing commands, and core logic for commit message processing and hook functionality
 
 ## Code Layout
 
 ```
-packages/
-├── cli/
-│   ├── src/
-│   │   ├── bin/           # Entry point scripts
-│   │   ├── commands/      # Command implementations
-│   │   ├── services/      # Business logic services
-│   │   └── utils/         # Utility functions
-│   ├── dist/              # Compiled output
-│   ├── package.json
-│   └── tsconfig.json
+src/
+├── bin/           # Entry point scripts
+├── commands/      # Command implementations
+├── services/      # Business logic services
+└── utils/         # Utility functions
 ```
 
 ## Development Workflow

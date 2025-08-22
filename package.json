@@ -2,25 +2,29 @@
   "name": "@ai-coding-workshop/commit-msg",
   "version": "0.1.0",
   "type": "module",
+  "main": "dist/index.js",
   "bin": {
-    "commit-msg": "./packages/cli/dist/bin/commit-msg.js"
+    "commit-msg": "./dist/bin/commit-msg.js"
   },
-  "workspaces": [
-    "packages/cli"
-  ],
   "scripts": {
-    "build": "node scripts/build.js",
-    "postinstall": "npm run build",
+    "build": "tsc && node scripts/copy-templates.js",
+    "start": "ts-node src/bin/commit-msg.ts",
+    "dev": "ts-node src/bin/commit-msg.ts",
     "test": "vitest run",
-    "format": "npx prettier --write packages/core/src/ packages/cli/src/ packages/cli/test/",
-    "lint": "npx eslint packages/core/src/ packages/cli/src/ packages/cli/test/",
+    "format": "npx prettier --write src/ test/",
+    "lint": "npx eslint src/ test/",
+    "postinstall": "npm run build",
     "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "description": "A CLI tool for managing Git commit-msg hooks",
+  "dependencies": {
+    "commander": "^9.4.0"
+  },
   "devDependencies": {
+    "@eslint/js": "^9.33.0",
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",

@@ -3,8 +3,10 @@
 // commit-msg CLI entry point
 
 import { Command } from 'commander';
-import { install } from '../commands/install';
-import { exec } from '../commands/exec';
+import { install } from '../commands/install.js';
+import { exec } from '../commands/exec.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
 
 const program = new Command();

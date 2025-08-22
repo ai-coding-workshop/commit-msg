@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Create dist directory if it doesn't exist
 const distDir = path.join(__dirname, '..', 'dist');
@@ -16,7 +21,7 @@ if (!fs.existsSync(distTemplatesDir)) {
 }
 
 // Copy template files
-const srcTemplatesDir = path.join(__dirname, '..', 'src', 'templates');
+const srcTemplatesDir = path.join(__dirname, '..', 'templates');
 if (fs.existsSync(srcTemplatesDir)) {
   const files = fs.readdirSync(srcTemplatesDir);
   files.forEach((file) => {
