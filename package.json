@@ -14,10 +14,15 @@
     "format": "npx prettier --write src/ test/",
     "lint": "npx eslint src/ test/",
     "postinstall": "npm run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepack": "npm run build"
   },
   "keywords": [
     "commit-msg"
+  ],
+  "files": [
+    "dist/",
+    "templates/"
   ],
   "repository": {
     "type": "git",
