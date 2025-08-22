@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-// commit-msg CLI entry point
+// commit-msg CLI entry point for development
 
 import { Command } from 'commander';
 import packageJson from '../../package.json' with { type: 'json' };
 
-// Import commands using relative paths
-import { install } from '../commands/install.js';
-import { exec } from '../commands/exec.js';
+// Import commands using relative paths with .ts extension for development
+import { install } from '../commands/install.ts';
+import { exec } from '../commands/exec.ts';
 
 async function loadCommands() {
   return { install, exec };

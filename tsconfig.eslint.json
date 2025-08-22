@@ -1,13 +1,12 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "module": "ESNext"
-  },
   "include": [
     "src/**/*",
     "test/**/*",
     "eslint.config.js",
     ".lintstagedrc.cjs",
-    "scripts/*.js"
-  ]
+    "scripts/*.js",
+    "tsconfig*.json"
+  ],
+  "exclude": []
 }

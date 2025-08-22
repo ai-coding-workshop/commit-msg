@@ -9,11 +9,10 @@
   "scripts": {
     "build": "node scripts/build.js",
     "start": "ts-node src/bin/commit-msg.ts",
-    "dev": "ts-node src/bin/commit-msg.ts",
+    "dev": "NODE_ENV=development NODE_OPTIONS=--no-warnings npx ts-node src/bin/commit-msg.dev.ts",
     "test": "vitest run",
     "format": "npx prettier --write src/ test/",
     "lint": "npx eslint src/ test/",
-    "postinstall": "npm run build",
     "prepare": "husky",
     "prepack": "npm run build"
   },

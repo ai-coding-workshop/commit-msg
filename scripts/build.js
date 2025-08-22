@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 // Run TypeScript compilation
 console.log('Running TypeScript compilation...');
-execSync('npx tsc', { stdio: 'inherit' });
+execSync('npx tsc -p tsconfig.build.json', { stdio: 'inherit' });
 
 // Copy template files
 console.log('Copying template files...');
