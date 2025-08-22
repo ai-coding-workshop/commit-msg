@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Build all packages in the correct order
-const packages = ['core', 'cli'];
+const packages = ['cli'];
 
 console.log('Building packages...');
 

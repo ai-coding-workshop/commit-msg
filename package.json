@@ -6,7 +6,7 @@
     "commit-msg": "./packages/cli/dist/bin/commit-msg.js"
   },
   "workspaces": [
-    "packages/*"
+    "packages/cli"
   ],
   "scripts": {
     "build": "node scripts/build.js",

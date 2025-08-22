@@ -35,21 +35,19 @@ The installation process automatically sets up the pre-commit hooks through the 
 
 ## Project Architecture
 
-This project follows a monorepo structure with two main packages:
+This project follows a single-package structure:
 
 ```
 commit-msg/
 ├── packages/
-│   ├── cli/          # Command-line interface
-│   └── core/         # Core functionality
+│   └── cli/          # Command-line interface and core functionality
 ├── scripts/          # Build and utility scripts
 └── docs/             # Documentation
 ```
 
 ### Package Structure
 
-1. **@commit-msg/cli**: Contains the command-line interface and user-facing commands
-2. **@commit-msg/core**: Contains the core logic for commit message processing and hook functionality
+1. **@commit-msg/cli**: Contains all functionality including the command-line interface, user-facing commands, and core logic for commit message processing and hook functionality
 
 ## Code Layout
 
@@ -61,11 +59,6 @@ packages/
 │   │   ├── commands/      # Command implementations
 │   │   ├── services/      # Business logic services
 │   │   └── utils/         # Utility functions
-│   ├── dist/              # Compiled output
-│   ├── package.json
-│   └── tsconfig.json
-├── core/
-│   ├── src/               # Core functionality
 │   ├── dist/              # Compiled output
 │   ├── package.json
 │   └── tsconfig.json
