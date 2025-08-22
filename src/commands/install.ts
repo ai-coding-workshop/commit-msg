@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
 /**
  * Get the Git hooks directory path
@@ -173,6 +174,10 @@ async function install(): Promise<void> {
   if (!fs.existsSync(hooksDir)) {
     fs.mkdirSync(hooksDir, { recursive: true });
   }
+
+  // Get the directory name of the current module
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
 
   // Read the hook template
   const templatePath = path.join(
