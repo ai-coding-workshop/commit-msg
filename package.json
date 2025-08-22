@@ -7,7 +7,7 @@
     "commit-msg": "dist/bin/commit-msg.js"
   },
   "scripts": {
-    "build": "tsc && node scripts/copy-templates.js",
+    "build": "node scripts/build.js",
     "start": "ts-node src/bin/commit-msg.ts",
     "dev": "ts-node src/bin/commit-msg.ts",
     "test": "vitest run",
