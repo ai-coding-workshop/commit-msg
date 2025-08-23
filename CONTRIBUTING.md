@@ -1,6 +1,6 @@
-# Contributing to commit-msg
+# Contributing to @ai-coding-workshop/commit-msg
 
-Thank you for your interest in contributing to commit-msg! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to @ai-coding-workshop/commit-msg! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -134,8 +134,8 @@ npm run lint
 npm run format
 
 # Or use the tools directly
-npx eslint packages/
-npx prettier --write packages/
+npx eslint src/ test/
+npx prettier --write src/ test/
 ```
 
 ## Code Style
@@ -154,7 +154,7 @@ Key style guidelines:
 
 ## Testing
 
-This project uses Jest for testing. Tests should be colocated with the code they test.
+This project uses Vitest for testing. Tests should be colocated with the code they test.
 
 To run tests:
 

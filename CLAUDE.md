@@ -14,20 +14,20 @@ The project follows a simplified single-package structure:
 
 ### Development
 
-- `npm run dev -- <command>` - Run the CLI tool directly with ts-node for development
+- `npm run dev -- <command>` - Run the CLI tool directly with ts-node for development (uses NODE_OPTIONS=--no-warnings to suppress experimental warnings)
 - `npm run build` - Build the CLI package
-- `npm test` - Run tests (currently not implemented)
+- `npm test` - Run tests with Vitest
 
 ### Code Quality
 
-- `npx eslint packages/` - Lint TypeScript files
-- `npx prettier --check packages/` - Check code formatting
-- `npx prettier --write packages/` - Format code
+- `npx eslint src/ test/` - Lint TypeScript files
+- `npx prettier --check src/ test/` - Check code formatting
+- `npx prettier --write src/ test/` - Format code
 
 ### Package Management
 
-- `npm install` - Install dependencies and automatically build packages
-- `npm run build --workspace=@commit-msg/cli` - Build the CLI package
+- `npm install` - Install dependencies and automatically build the project
+- `npm run build` - Build the CLI package
 
 ## Code Architecture
 
@@ -62,12 +62,13 @@ commit-msg/
 
 ### Build Process
 
-The project uses TypeScript compiler (tsc) for compilation with a post-build script to copy template files:
+The project uses a custom build script that handles TypeScript compilation, template copying, and setting executable permissions:
 
-1. Compiles TypeScript code from `src/` to `dist/`
+1. Compiles TypeScript code from `src/` to `dist/` using `npx tsc`
 2. Copies template files from `templates/` to `dist/templates/`
+3. Sets executable permissions on compiled bin files to ensure the CLI works correctly after installation
 
-This is configured in the `build` script in package.json.
+This is configured in the `build` script in package.json, which calls `scripts/build.js`.
 
 ### Code Quality Tools
 
@@ -77,7 +78,7 @@ This is configured in the `build` script in package.json.
 
 ### Development Workflow
 
-1. Make changes to TypeScript files in `packages/*/src/`
+1. Make changes to TypeScript files in `src/`
 2. Run `npm run build` to compile TypeScript to JavaScript
 3. Test changes using `npm run dev -- <command>`
 4. Commit changes (pre-commit hooks will automatically format and lint)
@@ -92,5 +93,7 @@ This project uses npm version management. To update the version:
 2. Build the project: `npm run build`
 3. Optionally create a git tag: `git tag v<version>`
 4. Push changes and tags: `git push && git push --tags`
+
+The project uses a prepack script that automatically runs the build process before publishing, ensuring all compiled files are up-to-date.
 
 The CLI tool dynamically reads its version from package.json, so the `--version` parameter will always show the current version.
