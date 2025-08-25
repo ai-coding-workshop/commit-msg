@@ -21,7 +21,7 @@ if (!fs.existsSync(distTemplatesDir)) {
 }
 
 // Copy template files
-const srcTemplatesDir = path.join(__dirname, '..', 'templates');
+const srcTemplatesDir = path.join(__dirname, '..', 'src', 'templates');
 if (fs.existsSync(srcTemplatesDir)) {
   const files = fs.readdirSync(srcTemplatesDir);
   files.forEach((file) => {
