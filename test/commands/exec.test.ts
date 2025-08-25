@@ -8,6 +8,8 @@ import {
   generateChangeId,
   insertTrailers,
   getCoDevelopedBy,
+  hasCoDevelopedBy,
+  needsCoDevelopedBy,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -88,6 +90,55 @@ describe('exec command utilities', () => {
       expect(result.message).toContain('This is a new feature');
       expect(result.shouldSave).toBe(true);
     });
+
+    it('should add CoDevelopedBy when needed', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      // Mock process.env to return a specific CoDevelopedBy value
+      const originalEnv = process.env;
+      process.env.CLAUDECODE = '1';
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toContain(
+        'Co-developed-by: Claude <noreply@anthropic.com>'
+      );
+      // Check that the original content is preserved
+      expect(result.message).toContain('feat: add new feature');
+      expect(result.message).toContain('This is a new feature');
+      expect(result.shouldSave).toBe(true);
+
+      // Restore the original env
+      process.env = originalEnv;
+    });
+
+    it('should not modify message when CoDevelopedBy already exists', async () => {
+      const message =
+        'feat: add new feature\n\nCo-developed-by: John Doe <john@example.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe(message);
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not modify message when CoDevelopedBy generation is disabled', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe(message);
+      expect(result.shouldSave).toBe(false);
+    });
   });
 
   describe('cleanCommitMessage', () => {
@@ -133,6 +184,16 @@ describe('exec command utilities', () => {
         'feat: add new feature\n\nThis is content\nThis is more content'
       );
       expect(result.shouldSave).toBe(true);
+    });
+
+    it('should not insert blank line when second line is empty', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\nThis is more content';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe(
+        'feat: add new feature\n\nThis is content\nThis is more content'
+      );
+      expect(result.shouldSave).toBe(false);
     });
   });
 
@@ -461,6 +522,53 @@ describe('exec command utilities', () => {
     it('should return empty string when environment variables exist but have no value', () => {
       process.env.CLAUDECODE = '';
       expect(getCoDevelopedBy()).toBe('');
+    });
+  });
+
+  describe('hasCoDevelopedBy', () => {
+    it('should return true when Co-developed-by exists with correct format', () => {
+      const message =
+        'feat: add new feature\n\nCo-developed-by: John Doe <john@example.com>';
+      expect(hasCoDevelopedBy(message)).toBe(true);
+    });
+
+    it('should return true when Co-developed-by exists with different case', () => {
+      const message =
+        'feat: add new feature\n\nco-developed-by: John Doe <john@example.com>';
+      expect(hasCoDevelopedBy(message)).toBe(true);
+    });
+
+    it('should return false when Co-developed-by does not exist', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      expect(hasCoDevelopedBy(message)).toBe(false);
+    });
+  });
+
+  describe('needsCoDevelopedBy', () => {
+    it('should return false when createCoDevelopedBy is false', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      expect(needsCoDevelopedBy(message, false)).toBe(false);
+    });
+
+    it('should return false when Co-developed-by already exists', () => {
+      const message =
+        'feat: add new feature\n\nCo-developed-by: John Doe <john@example.com>';
+      expect(needsCoDevelopedBy(message, true)).toBe(false);
+    });
+
+    it('should return false for temporary commits (fixup!)', () => {
+      const message = 'fixup! feat: add new feature\n\nThis is a fixup';
+      expect(needsCoDevelopedBy(message, true)).toBe(false);
+    });
+
+    it('should return false for temporary commits (squash!)', () => {
+      const message = 'squash! feat: add new feature\n\nThis is a squash';
+      expect(needsCoDevelopedBy(message, true)).toBe(false);
+    });
+
+    it('should return true when Co-developed-by should be inserted', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      expect(needsCoDevelopedBy(message, true)).toBe(true);
     });
   });
 });

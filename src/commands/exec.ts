@@ -702,4 +702,6 @@ export {
   insertTrailers,
   getCoDevelopedBy,
   isMergeCommit,
+  hasCoDevelopedBy,
+  needsCoDevelopedBy,
 };
