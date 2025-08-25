@@ -31,16 +31,16 @@
   "license": "MIT",
   "description": "A git commit-msg hook which generate Change-Id and Co-developed-by trailers",
   "dependencies": {
-    "commander": "^9.4.0"
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.33.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
+    "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
