@@ -15,6 +15,14 @@ async function exec(messageFile: string): Promise<void> {
       process.exit(1);
     }
 
+    // Check if this is a merge commit (has two or more parents)
+    if (isMergeCommit()) {
+      console.log(
+        'Merge commit detected, skipping commit-msg hook processing.'
+      );
+      process.exit(0);
+    }
+
     // Read the commit message file
     const messageContent = fs.readFileSync(messageFile, 'utf8');
 
@@ -98,6 +106,40 @@ function getGitConfig(): {
     commentChar,
     createCoDevelopedBy,
   };
+}
+
+/**
+ * Check if the current commit is a merge commit (has two or more parents)
+ * @returns True if this is a merge commit
+ */
+function isMergeCommit(): boolean {
+  try {
+    // Get the parent commits of HEAD
+    // HEAD^@ expands to all parent commits, one per line
+    const result = spawnSync('git', ['rev-parse', 'HEAD^@'], {
+      encoding: 'utf8',
+    });
+
+    if (result.status === 0 && result.stdout) {
+      // Count the number of parent commits (lines in output)
+      const parents = result.stdout
+        .trim()
+        .split('\n')
+        .filter((line) => line.length > 0);
+      // If there are 2 or more parents, it's a merge commit
+      return parents.length >= 2;
+    }
+
+    // If the command fails or returns no parents, assume it's not a merge commit
+    return false;
+  } catch (error) {
+    // If there's an error, assume it's not a merge commit
+    console.warn(
+      'Warning: Could not determine if this is a merge commit, assuming not'
+    );
+    console.debug('Git rev-parse error:', error);
+    return false;
+  }
 }
 
 /**
@@ -659,4 +701,5 @@ export {
   generateChangeId,
   insertTrailers,
   getCoDevelopedBy,
+  isMergeCommit,
 };
