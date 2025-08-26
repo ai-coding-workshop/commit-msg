@@ -6,7 +6,8 @@
     "eslint.config.js",
     ".lintstagedrc.cjs",
     "scripts/*.js",
-    "tsconfig*.json"
+    "tsconfig*.json",
+    "vitest.config.ts"
   ],
   "exclude": []
 }

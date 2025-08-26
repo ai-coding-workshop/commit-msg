@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "lib": ["ES2022"]
+  },
+  "ts-node": {
+    "transpileOnly": true,
+    "preferTsExts": true,
+    "esm": false,
+    "compilerOptions": {
+      "module": "CommonJS",
+      "moduleResolution": "node",
+      "target": "ES2022",
+      "lib": ["ES2022"]
+    }
+  }
+}

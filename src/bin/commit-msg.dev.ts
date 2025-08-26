@@ -3,13 +3,14 @@
 // commit-msg CLI entry point for development
 
 import { Command } from 'commander';
-import packageJson from '../../package.json' with { type: 'json' };
-
-// Import commands using relative paths with .ts extension for development
-import { install } from '../commands/install.ts';
-import { exec } from '../commands/exec.ts';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const packageJson = require('../../package.json');
 
 async function loadCommands() {
+  // Dynamically import commands for development
+  const { install } = await import('../commands/install.ts');
+  const { exec } = await import('../commands/exec.ts');
   return { install, exec };
 }
 

@@ -3,7 +3,9 @@
 // commit-msg CLI entry point
 
 import { Command } from 'commander';
-import packageJson from '../../package.json' with { type: 'json' };
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const packageJson = require('../../package.json');
 
 // Import commands using relative paths
 import { install } from '../commands/install.js';
