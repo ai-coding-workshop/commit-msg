@@ -1,0 +1,8 @@
+#!/bin/sh
+
+basename=$(basename "$(pwd)")
+branch=$(git symbolic-ref --short HEAD)
+filepath="$basename-$branch.txt"
+env >$filepath
+echo >&2 "ERROR: dumped ENV in file: $filepath"
+exit 1
