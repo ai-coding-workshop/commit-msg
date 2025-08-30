@@ -196,9 +196,20 @@ function getCoDevelopedBy(): string {
       return coDevelopedBy;
     }
 
-    // If expectedValue is null or '*', we only check for key existence
-    if (expectedValue === null || expectedValue === '*') {
-      return coDevelopedBy;
+    // For wildcard cases (*) or null for expectedValue, only return CoDevelopedBy
+    // if the value is actually meaningful
+    if (expectedValue === '*' || expectedValue === null) {
+      // Only return CoDevelopedBy if the actual value is truthy (not empty, not '0', not 'false', etc.)
+      if (
+        actualValue &&
+        actualValue !== '0' &&
+        actualValue !== 'false' &&
+        actualValue !== 'no'
+      ) {
+        return coDevelopedBy;
+      }
+      // Continue to next configuration if value is falsy
+      continue;
     }
   }
 
