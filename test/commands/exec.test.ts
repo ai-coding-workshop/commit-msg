@@ -10,6 +10,7 @@ import {
   getCoDevelopedBy,
   hasCoDevelopedBy,
   needsCoDevelopedBy,
+  clearCoDevelopedByEnvVars,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -513,11 +514,8 @@ describe('exec command utilities', () => {
     });
 
     it('should return empty string when environment variables are set to incorrect values', () => {
-      // Explicitly unset all environment variables we're testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
-      delete process.env.VSCODE_BRAND;
-      delete process.env.CURSOR_TRACE_ID;
+      // Clear all environment variables using the utility function
+      clearCoDevelopedByEnvVars();
 
       process.env.CLAUDECODE = '0';
       process.env.GEMINI_CLI = '0';
@@ -526,11 +524,8 @@ describe('exec command utilities', () => {
     });
 
     it('should return empty string when environment variables exist but have no value', () => {
-      // Explicitly unset all environment variables we're testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
-      delete process.env.VSCODE_BRAND;
-      delete process.env.CURSOR_TRACE_ID;
+      // Clear all environment variables using the utility function
+      clearCoDevelopedByEnvVars();
 
       process.env.CLAUDECODE = '';
       expect(getCoDevelopedBy()).toBe('');

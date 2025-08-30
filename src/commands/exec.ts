@@ -5,6 +5,35 @@
 import * as fs from 'fs';
 import { spawnSync } from 'child_process';
 
+// Define environment variable configurations and their corresponding CoDevelopedBy values
+// Format: ["key=value", "co-developed-by-string"]
+const envConfigs: [string, string][] = [
+  // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
+  ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
+  ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
+  // Check env variables for IDEs
+  ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
+  ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
+];
+
+/**
+ * Clear all environment variables used by getCoDevelopedBy function
+ * This is useful for testing to ensure clean state
+ */
+function clearCoDevelopedByEnvVars(): void {
+  for (const [envConfig] of envConfigs) {
+    const equalIndex = envConfig.indexOf('=');
+    if (equalIndex === -1) {
+      // No '=' found, just a key
+      delete process.env[envConfig];
+    } else {
+      // Split into key and value
+      const key = envConfig.substring(0, equalIndex);
+      delete process.env[key];
+    }
+  }
+}
+
 async function exec(messageFile: string): Promise<void> {
   console.log(`Executing commit-msg hook on file: ${messageFile}`);
 
@@ -147,17 +176,6 @@ function isMergeCommit(): boolean {
  * @returns The CoDevelopedBy value or empty string if not configured
  */
 function getCoDevelopedBy(): string {
-  // Define environment variable configurations and their corresponding CoDevelopedBy values
-  // Format: ["key=value", "co-developed-by-string"]
-  const envConfigs: [string, string][] = [
-    // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
-    ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
-    ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
-    // Check env variables for IDEs
-    ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
-    ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
-  ];
-
   // Check each environment configuration in order
   for (const [envConfig, coDevelopedBy] of envConfigs) {
     // Parse the environment configuration
@@ -715,4 +733,5 @@ export {
   isMergeCommit,
   hasCoDevelopedBy,
   needsCoDevelopedBy,
+  clearCoDevelopedByEnvVars,
 };
