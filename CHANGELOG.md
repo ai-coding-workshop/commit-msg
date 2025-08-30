@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2025-08-30
+
+### Added
+
+- Add merge commit detection to skip processing
+  - Automatically detect merge commits and skip Change-Id generation
+  - Improves workflow when merging branches with existing Change-Ids
+
+### Changed
+
+- Improve GitHub Actions workflows
+  - Add workflows for testing, building, and publishing
+  - Add check for bad whitespaces in CI
+  - Fix Node.js 20.x compatibility issues
+
+### Removed
+
+- Remove duplicate template files
+  - Clean up redundant template files in the repository
+
 ## [0.1.10] - 2025-08-23
 
 ### Fixed
