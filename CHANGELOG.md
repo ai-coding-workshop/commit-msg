@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2025-08-31
+
+### Added
+
+- Add Qwen Code commit detection via environment variable
+  - Detect commits initiated by Qwen Code v0.0.8 or higher through QWEN_CODE=1
+  - Enable tracking contributions from the Qwen Code AI assistant
+
+### Changed
+
+- Remove wildcard environment variable matching logic
+  - Simplify environment variable matching by removing special case handling for '\*'
+  - Remove obsolete wildcard tests for CLAUDECODE and QWEN_CODE
+  - Maintain compatibility with CURSOR_TRACE_ID wildcard configuration
+
+### Fixed
+
+- Ensure package compatibility with Node.js 18+ for npm publishing
+  - Update package configuration and build settings for Node.js 18+ compatibility
+  - Fix issues that prevented successful npm publishing
+
 ## [0.1.11] - 2025-08-30
 
 ### Added
