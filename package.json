@@ -33,8 +33,11 @@
   "author": "Jiang Xin <worldhello.net@gmail.com>",
   "license": "MIT",
   "description": "A git commit-msg hook which generate Change-Id and Co-developed-by trailers",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "commander": "^14.0.0"
+    "commander": "^13.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -43,7 +46,7 @@
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.33.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.5",
+    "lint-staged": "^15.1.0",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
