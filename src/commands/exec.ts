@@ -210,11 +210,6 @@ function getCoDevelopedBy(): string {
       return coDevelopedBy;
     }
 
-    // Special case: if the actual environment variable value is '*', treat it as a wildcard match
-    if (actualValue === '*') {
-      return coDevelopedBy;
-    }
-
     // For wildcard cases (*) or null for expectedValue, only return CoDevelopedBy
     // if the value is actually meaningful
     if (expectedValue === '*' || expectedValue === null) {

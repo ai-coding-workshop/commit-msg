@@ -457,22 +457,10 @@ describe('exec command utilities', () => {
       expect(getCoDevelopedBy()).toBe('Claude <noreply@anthropic.com>');
     });
 
-    it('should return Claude CoDevelopedBy when CLAUDECODE=* is set (wildcard)', () => {
-      process.env.CLAUDECODE = '*';
-      expect(getCoDevelopedBy()).toBe('Claude <noreply@anthropic.com>');
-    });
-
     it('should return Qwen-Coder CoDevelopedBy when QWEN_CODE=1 is set', () => {
       // Clear all environment variables to ensure proper order testing
       clearCoDevelopedByEnvVars();
       process.env.QWEN_CODE = '1';
-      expect(getCoDevelopedBy()).toBe('Qwen-Coder <noreply@alibabacloud.com>');
-    });
-
-    it('should return Qwen-Coder CoDevelopedBy when QWEN_CODE=* is set (wildcard)', () => {
-      // Clear all environment variables to ensure proper order testing
-      clearCoDevelopedByEnvVars();
-      process.env.QWEN_CODE = '*';
       expect(getCoDevelopedBy()).toBe('Qwen-Coder <noreply@alibabacloud.com>');
     });
 
