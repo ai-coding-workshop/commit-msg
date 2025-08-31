@@ -239,6 +239,56 @@ This is a really awesome feature.`;
     );
   });
 
+  it('should work with QWEN_CODE environment variable', () => {
+    // Create a commit message file
+    const messageFile = path.join(tempDir, 'qwen-code-message.txt');
+    const commitMessage = `feat: implement AI feature
+
+This feature uses AI technology to enhance the application.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Test with QWEN_CODE environment variable, but first unset higher priority variables
+    const env = {
+      ...process.env,
+      CLAUDECODE: undefined,
+      QWEN_CODE: '1',
+      GEMINI_CLI: undefined,
+      VSCODE_BRAND: undefined,
+      CURSOR_TRACE_ID: undefined,
+    };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should have added Co-developed-by for Qwen-Coder
+    expect(processedMessage).toContain(
+      'Co-developed-by: Qwen-Coder <noreply@alibabacloud.com>'
+    );
+
+    // Verify original content is preserved
+    expect(processedMessage).toContain('feat: implement AI feature');
+    expect(processedMessage).toContain(
+      'This feature uses AI technology to enhance the application.'
+    );
+  });
+
   it('should work with disabled CoDevelopedBy configuration', () => {
     // Create a commit message file
     const messageFile = path.join(tempDir, 'no-co-developed-message.txt');

@@ -59,6 +59,7 @@ describe('exec command utilities', () => {
       const config = {
         createChangeId: true,
         commentChar: '#',
+        createCoDevelopedBy: false,
       };
       const result = await processCommitMessage(message, config);
       expect(result.message).toContain('Change-Id: I123456789abcdef');
@@ -461,55 +462,68 @@ describe('exec command utilities', () => {
       expect(getCoDevelopedBy()).toBe('Claude <noreply@anthropic.com>');
     });
 
+    it('should return Qwen-Coder CoDevelopedBy when QWEN_CODE=1 is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.QWEN_CODE = '1';
+      expect(getCoDevelopedBy()).toBe('Qwen-Coder <noreply@alibabacloud.com>');
+    });
+
+    it('should return Qwen-Coder CoDevelopedBy when QWEN_CODE=* is set (wildcard)', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.QWEN_CODE = '*';
+      expect(getCoDevelopedBy()).toBe('Qwen-Coder <noreply@alibabacloud.com>');
+    });
+
     it('should return Gemini CoDevelopedBy when GEMINI_CLI=1 is set', () => {
-      // Explicitly unset other environment variables to ensure proper order testing
-      delete process.env.CLAUDECODE;
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
       process.env.GEMINI_CLI = '1';
-      delete process.env.VSCODE_BRAND;
-      delete process.env.CURSOR_TRACE_ID;
       expect(getCoDevelopedBy()).toBe('Gemini <noreply@developers.google.com>');
     });
 
     it('should return Qoder CoDevelopedBy when VSCODE_BRAND=Qoder is set', () => {
-      // Explicitly unset other environment variables to ensure proper order testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
       process.env.VSCODE_BRAND = 'Qoder';
-      delete process.env.CURSOR_TRACE_ID;
       expect(getCoDevelopedBy()).toBe('Qoder <noreply@qoder.com>');
     });
 
     it('should return Cursor CoDevelopedBy when CURSOR_TRACE_ID=* is set (wildcard)', () => {
-      // Explicitly unset other environment variables to ensure proper order testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
-      delete process.env.VSCODE_BRAND;
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
       process.env.CURSOR_TRACE_ID = '*';
       expect(getCoDevelopedBy()).toBe('Cursor <noreply@cursor.com>');
     });
 
     it('should return Cursor CoDevelopedBy when CURSOR_TRACE_ID is set to any value (wildcard)', () => {
-      // Explicitly unset other environment variables to ensure proper order testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
-      delete process.env.VSCODE_BRAND;
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
       process.env.CURSOR_TRACE_ID = 'any-value';
       expect(getCoDevelopedBy()).toBe('Cursor <noreply@cursor.com>');
     });
 
     it('should return Claude CoDevelopedBy when CLAUDECODE=1 is set and other variables are also set', () => {
       process.env.CLAUDECODE = '1';
+      process.env.QWEN_CODE = '1';
       process.env.GEMINI_CLI = '1';
       process.env.VSCODE_BRAND = 'Qoder';
       expect(getCoDevelopedBy()).toBe('Claude <noreply@anthropic.com>');
     });
 
+    it('should return Qwen-Coder CoDevelopedBy when QWEN_CODE=1 is set and other lower priority variables are also set', () => {
+      clearCoDevelopedByEnvVars();
+      process.env.QWEN_CODE = '1';
+      process.env.GEMINI_CLI = '1';
+      process.env.VSCODE_BRAND = 'Qoder';
+      process.env.CURSOR_TRACE_ID = 'test';
+      expect(getCoDevelopedBy()).toBe('Qwen-Coder <noreply@alibabacloud.com>');
+    });
+
     it('should return empty string when none of the environment variables are set', () => {
-      // Explicitly unset all environment variables we're testing
-      delete process.env.CLAUDECODE;
-      delete process.env.GEMINI_CLI;
-      delete process.env.VSCODE_BRAND;
-      delete process.env.CURSOR_TRACE_ID;
+      // Clear all environment variables we're testing
+      clearCoDevelopedByEnvVars();
       expect(getCoDevelopedBy()).toBe('');
     });
 
@@ -518,6 +532,7 @@ describe('exec command utilities', () => {
       clearCoDevelopedByEnvVars();
 
       process.env.CLAUDECODE = '0';
+      process.env.QWEN_CODE = '0';
       process.env.GEMINI_CLI = '0';
       process.env.VSCODE_BRAND = 'Other';
       expect(getCoDevelopedBy()).toBe('');
