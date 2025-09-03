@@ -17,7 +17,7 @@ console.log('Copying template files...');
 const copyTemplatesScript = path.join(__dirname, 'copy-templates.js');
 execSync(`node "${copyTemplatesScript}"`, { stdio: 'inherit' });
 
-// Set executable permissions for bin files
+// Set executable permissions for bin files and create wrapper script
 const distBinDir = path.join(__dirname, '..', 'dist', 'bin');
 if (fs.existsSync(distBinDir)) {
   const files = fs.readdirSync(distBinDir);
@@ -27,6 +27,15 @@ if (fs.existsSync(distBinDir)) {
       // Set executable permission (chmod +x)
       fs.chmodSync(filePath, 0o755);
       console.log(`Set executable permission for ${filePath}`);
+
+      // Create wrapper script for commit-msg.js
+      if (file === 'commit-msg.js') {
+        const wrapperPath = path.join(distBinDir, 'commit-msg');
+        const wrapperContent = `#!/bin/sh\nnode "$(dirname "$0")/commit-msg.js" "$@"`;
+        fs.writeFileSync(wrapperPath, wrapperContent, 'utf8');
+        fs.chmodSync(wrapperPath, 0o755);
+        console.log(`Created executable wrapper script at ${wrapperPath}`);
+      }
     }
   });
 }

@@ -36,6 +36,12 @@ function clearCoDevelopedByEnvVars(): void {
 }
 
 async function exec(messageFile: string): Promise<void> {
+  // Handle debug argument - exit gracefully without error
+  if (messageFile === 'DEBUG_MODE_TEST') {
+    console.log('Debug mode: exiting without processing');
+    process.exit(0);
+  }
+
   console.log(`Executing commit-msg hook on file: ${messageFile}`);
 
   try {
