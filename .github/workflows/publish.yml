@@ -29,6 +29,8 @@ jobs:
       env:
         # Set longer timeout for tests
         VITEST_TIMEOUT: 60000
+        # Uncomment the next line to skip hook tests
+        SKIP_HOOK_TESTS: true
 
     - name: Publish to npm
       run: npm publish

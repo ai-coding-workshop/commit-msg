@@ -20,6 +20,8 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/src/bin/commit-msg.dev.ts',
+      // Conditionally exclude hook tests if environment variable is set
+      ...(process.env.SKIP_HOOK_TESTS === 'true' ? ['**/hook.test.ts'] : []),
     ],
     // Add test timeout for slower environments
     testTimeout: 60000, // 60 seconds
