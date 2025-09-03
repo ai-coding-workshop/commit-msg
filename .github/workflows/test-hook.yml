@@ -1,0 +1,67 @@
+name: Hook Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  hook-tests:
+    runs-on: ubuntu-latest
+    # Only run if explicitly requested or if hook-related files are changed
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[test-hooks]')
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Check Node.js version
+      run: |
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+        echo "Node.js major version: $(node --version | cut -d. -f1 | tr -d v)"
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Clean and build project
+      run: |
+        # Clean any existing build artifacts
+        rm -rf dist/
+        # Build the project
+        npm run build
+        # Verify build artifacts exist
+        ls -la dist/
+        # Verify hook template exists
+        cat dist/templates/commit-msg.hook
+
+    - name: Run hook tests only
+      run: npm run test:hook-only
+      env:
+        # Set longer timeout for tests
+        VITEST_TIMEOUT: 120000
+        # Enable debug mode for better troubleshooting
+        DEBUG: '1'
+
+    - name: Upload test artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-artifacts-node-${{ matrix.node-version }}
+        path: |
+          dist/
+          test/
+        retention-days: 7
