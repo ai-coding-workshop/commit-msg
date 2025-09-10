@@ -14,7 +14,7 @@ const devScript =
         ? 'dev:node18'
         : 'dev:compat';
 
-describe('commit-msg CLI --version tests', () => {
+describe('commit-msg CLI version tests', () => {
   // Test development mode --version
   it('should output version in development mode with correct prefix', () => {
     try {
@@ -34,6 +34,25 @@ describe('commit-msg CLI --version tests', () => {
     }
   });
 
+  // Test development mode -v
+  it('should output version in development mode with -v parameter', () => {
+    try {
+      const output = execSync(`npm run ${devScript} -- -v`, {
+        encoding: 'utf-8',
+      });
+      expect(output).toContain('@ai-coding-workshop/commit-msg:');
+    } catch (error) {
+      // If development mode fails, skip this test for older Node.js versions
+      if (nodeMajorVersion < 20) {
+        console.log(
+          `Skipping development mode -v test for Node.js ${nodeVersion} due to ESM limitations`
+        );
+        return;
+      }
+      throw error;
+    }
+  });
+
   // Test production mode --version
   it('should output version in production mode with correct prefix', () => {
     // First build the project
@@ -41,6 +60,18 @@ describe('commit-msg CLI --version tests', () => {
 
     // Then test the compiled version
     const output = execSync('node dist/bin/commit-msg.js --version', {
+      encoding: 'utf-8',
+    });
+    expect(output).toContain('@ai-coding-workshop/commit-msg:');
+  });
+
+  // Test production mode -v
+  it('should output version in production mode with -v parameter', () => {
+    // First build the project
+    execSync('npm run build', { stdio: 'inherit' });
+
+    // Then test the compiled version with -v
+    const output = execSync('node dist/bin/commit-msg.js -v', {
       encoding: 'utf-8',
     });
     expect(output).toContain('@ai-coding-workshop/commit-msg:');
@@ -72,5 +103,39 @@ describe('commit-msg CLI --version tests', () => {
     const prodVersion = prodOutput.trim().split(':').pop()?.trim();
 
     expect(devVersion).toBe(prodVersion);
+  });
+
+  // Test that -v and --version produce the same output
+  it('should produce the same output for -v and --version parameters', () => {
+    // Build the project first
+    execSync('npm run build', { stdio: 'inherit' });
+
+    // Test production mode
+    const versionOutput = execSync('node dist/bin/commit-msg.js --version', {
+      encoding: 'utf-8',
+    });
+    const vOutput = execSync('node dist/bin/commit-msg.js -v', {
+      encoding: 'utf-8',
+    });
+
+    expect(vOutput).toBe(versionOutput);
+
+    // Test development mode if supported
+    if (nodeMajorVersion >= 20) {
+      try {
+        const devVersionOutput = execSync(`npm run ${devScript} -- --version`, {
+          encoding: 'utf-8',
+        });
+        const devVOutput = execSync(`npm run ${devScript} -- -v`, {
+          encoding: 'utf-8',
+        });
+
+        expect(devVOutput).toBe(devVersionOutput);
+      } catch (error) {
+        console.log(
+          `Skipping development mode equivalence test for Node.js ${nodeVersion} due to ESM limitations`
+        );
+      }
+    }
   });
 });

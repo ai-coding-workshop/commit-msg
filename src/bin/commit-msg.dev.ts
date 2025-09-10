@@ -22,7 +22,7 @@ async function main() {
   program
     .name('commit-msg')
     .description('CLI tool for managing Git commit-msg hooks')
-    .version(`${packageJson.name}: ${packageJson.version}`);
+    .version(`${packageJson.name}: ${packageJson.version}`, '-v, --version');
 
   program
     .command('install')
