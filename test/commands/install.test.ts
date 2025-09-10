@@ -421,7 +421,7 @@ describe('install command', () => {
     );
   });
 
-  it('should exit with error when not in a Git repository', async () => {
+  it('should throw error when not in a Git repository', async () => {
     // Mock git commands to return an error
     vi.mocked(spawnSync).mockImplementation(
       (command: string, args: string[]) => {
@@ -452,30 +452,13 @@ describe('install command', () => {
       }
     );
 
-    // Mock process.exit to throw an error instead of exiting
-    const mockExit = vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: number) => {
-        throw new Error(`process.exit unexpectedly called with "${code}"`);
-      });
-
     // Run the install command and expect it to throw an error
     await expect(install()).rejects.toThrow(
-      'process.exit unexpectedly called with "1"'
+      'Not in a Git repository and no global core.hooksPath set. Could not determine directory to install commit-msg hook'
     );
-
-    // Restore the mock
-    mockExit.mockRestore();
   });
 
-  it('should exit with error when template file cannot be read', async () => {
-    // Mock process.exit
-    const mockExit = vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: number) => {
-        throw new Error(`process.exit unexpectedly called with "${code}"`);
-      });
-
+  it('should throw error when template file cannot be read', async () => {
     // Mock git commands
     vi.mocked(spawnSync).mockImplementation(
       (command: string, args: string[]) => {
@@ -537,12 +520,7 @@ describe('install command', () => {
     }) as FsReadFileSyncMock);
 
     // Run the install command and expect it to throw an error
-    await expect(install()).rejects.toThrow(
-      'process.exit unexpectedly called with "1"'
-    );
-
-    // Restore the mock
-    mockExit.mockRestore();
+    await expect(install()).rejects.toThrow('Template file not found');
   });
 });
 

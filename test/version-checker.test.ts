@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   checkAndUpgrade,
   checkForUpdatesOnly,
 } from '../src/utils/version-checker';
+
+// Get current version from package.json
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '../package.json'), 'utf8')
+);
+const currentVersion = packageJson.version;
 
 interface MockNotifier {
   update?: {
@@ -45,12 +53,14 @@ describe('Version Checker', () => {
       expect(hasUpdate).toBe(false);
       expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
       expect(consoleSpy).toHaveBeenCalledWith(
-        '📦 Current local version: 0.1.14'
+        `📦 Current local version: ${currentVersion}`
       );
       expect(consoleSpy).toHaveBeenCalledWith(
         '✅ You are using the latest version'
       );
-      expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.14');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        `📦 Local version: ${currentVersion}`
+      );
 
       consoleSpy.mockRestore();
     });
@@ -100,7 +110,7 @@ describe('Version Checker', () => {
       expect(hasUpdate).toBe(true);
       expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
       expect(consoleSpy).toHaveBeenCalledWith(
-        '📦 Current local version: 0.1.14'
+        `📦 Current local version: ${currentVersion}`
       );
       expect(consoleSpy).toHaveBeenCalledWith('✅ Update found!');
       expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.0');
@@ -194,9 +204,11 @@ describe('Version Checker', () => {
     });
 
     it('should show verbose output when verbose option is enabled', async () => {
-      // Temporarily unset NODE_ENV to avoid skipping in test environment
+      // Temporarily unset NODE_ENV and CI to avoid skipping in test environment
       const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
       delete process.env.NODE_ENV;
+      delete process.env.CI;
 
       const mockUpdateNotifier = await import('update-notifier');
       const mockNotifier = {
@@ -212,20 +224,27 @@ describe('Version Checker', () => {
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      await checkAndUpgrade({ verbose: true, autoUpgrade: false });
+      try {
+        await checkAndUpgrade({ verbose: true, autoUpgrade: false });
 
-      expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '📦 Current local version: 0.1.14'
-      );
-      expect(consoleSpy).toHaveBeenCalledWith('✅ Update found!');
-      expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.0');
-      expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 0.2.0');
+        expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `📦 Current local version: ${currentVersion}`
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('✅ Update found!');
+        expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.0');
+        expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 0.2.0');
+      } finally {
+        consoleSpy.mockRestore();
 
-      consoleSpy.mockRestore();
-
-      // Restore NODE_ENV
-      process.env.NODE_ENV = originalNodeEnv;
+        // Restore original environment variables
+        if (originalNodeEnv) {
+          process.env.NODE_ENV = originalNodeEnv;
+        }
+        if (originalCI) {
+          process.env.CI = originalCI;
+        }
+      }
     });
 
     it('should skip check in CI environment with verbose output', async () => {
@@ -270,9 +289,9 @@ describe('Version Checker', () => {
       );
 
       expect(output).toContain('🔍 Checking for updates...');
-      expect(output).toContain('📦 Current local version: 0.1.14');
+      expect(output).toContain(`📦 Current local version: ${currentVersion}`);
       expect(output).toContain('✅ You are using the latest version');
-      expect(output).toContain('📦 Local version: 0.1.14');
+      expect(output).toContain(`📦 Local version: ${currentVersion}`);
     });
 
     it('should execute check-update command with environment variable', () => {
@@ -282,9 +301,9 @@ describe('Version Checker', () => {
       });
 
       expect(output).toContain('🔍 Checking for updates...');
-      expect(output).toContain('📦 Current local version: 0.1.14');
+      expect(output).toContain(`📦 Current local version: ${currentVersion}`);
       expect(output).toContain('✅ You are using the latest version');
-      expect(output).toContain('📦 Local version: 0.1.14');
+      expect(output).toContain(`📦 Local version: ${currentVersion}`);
     });
   });
 });

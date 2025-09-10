@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const __filename = fileURLToPath(import.meta.url);
 const pkg = require('../../package.json');
 
 interface UpdateInfo {
@@ -48,13 +47,46 @@ export async function checkAndUpgrade(
   try {
     if (verbose) {
       console.log('🔍 Checking for updates...');
+      console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Current local version: ${pkg.version}`);
+      console.log(`⏰ Check interval: ${checkInterval / 1000 / 60 / 60} hours`);
     }
 
     const notifier = updateNotifier({
       pkg,
       updateCheckInterval: checkInterval,
     });
+
+    // Check if we're using cached data or making a fresh request
+    if (verbose) {
+      const config = (
+        notifier as unknown as { config: { get: (key: string) => unknown } }
+      ).config;
+      const lastCheck = config?.get?.('lastUpdateCheck');
+      const checkIntervalHours = checkInterval / 1000 / 60 / 60;
+
+      if (lastCheck && typeof lastCheck === 'number') {
+        const timeSinceLastCheck = Date.now() - lastCheck;
+        const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
+
+        if (timeSinceLastCheck < checkInterval) {
+          console.log(
+            `📋 Using cached version data (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: ${checkIntervalHours}h)`
+          );
+        } else {
+          console.log(
+            `🌐 Cache expired, making fresh network request (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: ${checkIntervalHours}h)`
+          );
+        }
+      } else {
+        console.log(
+          '🌐 No cache found, making fresh network request (first time check)'
+        );
+        console.log(
+          `ℹ️  Note: update-notifier will cache results for ${checkIntervalHours}h to avoid frequent network requests`
+        );
+      }
+    }
 
     if (notifier.update) {
       const updateInfo: UpdateInfo = {
@@ -65,8 +97,10 @@ export async function checkAndUpgrade(
 
       if (verbose) {
         console.log('✅ Update found!');
+        console.log(`📦 Package: ${pkg.name}`);
         console.log(`📦 Local version: ${updateInfo.current}`);
         console.log(`🌐 Remote version: ${updateInfo.latest}`);
+        console.log(`🌐 Remote package: ${pkg.name}@${updateInfo.latest}`);
       }
 
       if (!silent) {
@@ -90,7 +124,9 @@ export async function checkAndUpgrade(
     } else {
       if (verbose) {
         console.log('✅ You are using the latest version');
+        console.log(`📦 Package: ${pkg.name}`);
         console.log(`📦 Local version: ${pkg.version}`);
+        console.log(`🌐 Remote package: ${pkg.name}@${pkg.version} (latest)`);
       }
     }
   } catch (error) {
@@ -214,7 +250,9 @@ export async function checkForUpdatesOnly(
   try {
     if (verbose) {
       console.log('🔍 Checking for updates...');
+      console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Current local version: ${pkg.version}`);
+      console.log('⏰ Check interval: 24 hours');
     }
 
     const notifier = updateNotifier({
@@ -222,11 +260,43 @@ export async function checkForUpdatesOnly(
       updateCheckInterval: 1000 * 60 * 60 * 24,
     });
 
+    // Check if we're using cached data or making a fresh request
+    if (verbose) {
+      const config = (
+        notifier as unknown as { config: { get: (key: string) => unknown } }
+      ).config;
+      const lastCheck = config?.get?.('lastUpdateCheck');
+
+      if (lastCheck && typeof lastCheck === 'number') {
+        const timeSinceLastCheck = Date.now() - lastCheck;
+        const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
+
+        if (timeSinceLastCheck < 24 * 60 * 60 * 1000) {
+          console.log(
+            `📋 Using cached version data (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: 24h)`
+          );
+        } else {
+          console.log(
+            `🌐 Cache expired, making fresh network request (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: 24h)`
+          );
+        }
+      } else {
+        console.log(
+          '🌐 No cache found, making fresh network request (first time check)'
+        );
+        console.log(
+          'ℹ️  Note: update-notifier will cache results for 24h to avoid frequent network requests'
+        );
+      }
+    }
+
     if (notifier.update) {
       if (verbose) {
         console.log('✅ Update found!');
+        console.log(`📦 Package: ${pkg.name}`);
         console.log(`📦 Local version: ${notifier.update.current}`);
         console.log(`🌐 Remote version: ${notifier.update.latest}`);
+        console.log(`🌐 Remote package: ${pkg.name}@${notifier.update.latest}`);
       }
       console.log('\n🔄 New version available!');
       console.log(`Current version: ${notifier.update.current}`);
@@ -237,7 +307,9 @@ export async function checkForUpdatesOnly(
 
     if (verbose) {
       console.log('✅ You are using the latest version');
+      console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Local version: ${pkg.version}`);
+      console.log(`🌐 Remote package: ${pkg.name}@${pkg.version} (latest)`);
     }
     return false;
   } catch (error) {
