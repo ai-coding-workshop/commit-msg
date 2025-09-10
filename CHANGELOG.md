@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-09-10
+
+### Added
+
+- Add global `--verbose` parameter support
+  - Add global `--verbose` option to main program for consistent verbose output
+  - Support parameter priority: command `--verbose` > global `--verbose` > environment variable
+  - Create `getVerboseMode()` helper function for unified verbose handling
+  - Maintain backward compatibility with `COMMIT_MSG_VERBOSE` environment variable
+
+- Add automatic version checking and upgrade functionality
+  - Implement `update-notifier` integration for checking package updates
+  - Add `checkAndUpgrade()` function for automatic version checking and upgrading
+  - Add `checkForUpdatesOnly()` function for checking updates without upgrading
+  - Add `check-update` command for manual update checking
+  - Support `UPDATE_CHECK_INTERVAL` environment variable for custom check intervals (default: 24 hours)
+  - Add verbose output support for version checking operations
+
+- Add `UPDATE_CHECK_INTERVAL` environment variable support
+  - Allow customizing update check interval in seconds via `UPDATE_CHECK_INTERVAL` env var
+  - Default to 24 hours if not specified
+  - Support decimal formatting for time display (max 4 decimal places, remove trailing zeros)
+  - Apply to both `checkAndUpgrade` and `checkForUpdatesOnly` functions
+
+### Changed
+
+- Improve error handling and update check integration
+  - Remove duplicate `checkAndUpgrade` calls in error handling paths
+  - Ensure update checks run on both successful and failed command executions
+  - Add `exitOverride` to Commander.js for handling parsing errors with update checks
+  - Improve error propagation to allow update operations before exit
+
+- Enhance verbose output for version checking
+  - Add detailed logging for update check intervals and cache status
+  - Improve time formatting with proper decimal precision
+  - Add verbose output support for `check-update` command
+  - Show comprehensive update information when verbose mode is enabled
+
+### Fixed
+
+- Resolve npm upgrade hang issue after successful installation
+  - Add `--yes --force` flags to npm update commands for non-interactive execution
+  - Set `npm_config_yes`, `npm_config_force`, and `CI` environment variables in spawn options
+  - Implement proper process cleanup with resolved flag and exit event handling
+  - Fix timeout handling to prevent hanging after successful npm operations
+
+- Fix command execution error handling
+  - Replace `process.exit(1)` with `throw error` in command catch blocks
+  - Ensure update checks are triggered even when commands fail with missing arguments
+  - Improve error handling flow to maintain update check functionality
+
 ## [0.1.14] - 2025-01-27
 
 ### Added
