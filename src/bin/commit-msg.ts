@@ -19,6 +19,11 @@ async function loadCommands() {
   return { install, exec };
 }
 
+// Helper function to determine verbose mode
+function getVerboseMode(options: { verbose?: boolean } = {}): boolean {
+  return options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
+}
+
 async function main() {
   const { install, exec } = await loadCommands();
 
@@ -28,9 +33,10 @@ async function main() {
     .name('commit-msg')
     .description('CLI tool for managing Git commit-msg hooks')
     .version(`${packageJson.name}: ${packageJson.version}`, '-v, --version')
+    .option('--verbose', 'Enable verbose output')
     .exitOverride(async (err) => {
       // Check for updates when command fails for any reason
-      const verbose = process.env.COMMIT_MSG_VERBOSE === 'true';
+      const verbose = getVerboseMode(program.opts());
       if (verbose) {
         console.log(
           '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
@@ -53,13 +59,10 @@ async function main() {
     .description('Install the commit-msg hook in the current Git repository')
     .option('-v, --verbose', 'Enable verbose output')
     .action(async (options) => {
-      const verbose =
-        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
-      let success = false;
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
 
       try {
         await install();
-        success = true;
         // Check for updates after successful installation
         try {
           await checkAndUpgrade({ verbose });
@@ -100,13 +103,10 @@ async function main() {
     .argument('<message-file>', 'path to the commit message file')
     .option('-v, --verbose', 'Enable verbose output')
     .action(async (messageFile, options) => {
-      const verbose =
-        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
-      let success = false;
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
 
       try {
         await exec(messageFile);
-        success = true;
         // Check for updates after successful execution
         try {
           await checkAndUpgrade({ verbose });
@@ -144,8 +144,7 @@ async function main() {
     .description('Check for available updates')
     .option('-v, --verbose', 'Enable verbose output')
     .action(async (options) => {
-      const verbose =
-        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
       const hasUpdate = await checkForUpdatesOnly(verbose);
       if (!hasUpdate && !verbose) {
         console.log('✅ You are using the latest version');
