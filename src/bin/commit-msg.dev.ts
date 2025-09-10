@@ -26,7 +26,26 @@ async function main() {
   program
     .name('commit-msg')
     .description('CLI tool for managing Git commit-msg hooks')
-    .version(`${packageJson.name}: ${packageJson.version}`, '-v, --version');
+    .version(`${packageJson.name}: ${packageJson.version}`, '-v, --version')
+    .exitOverride(async (err) => {
+      // Check for updates when command fails for any reason
+      const verbose = process.env.COMMIT_MSG_VERBOSE === 'true';
+      if (verbose) {
+        console.log(
+          '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+        );
+      }
+      try {
+        await checkAndUpgrade({ verbose, silent: !verbose });
+      } catch (updateError) {
+        if (verbose) {
+          console.log('Version check failed:', updateError);
+        }
+      }
+
+      // Re-throw the error to maintain original behavior
+      throw err;
+    });
 
   program
     .command('install')
@@ -55,7 +74,7 @@ async function main() {
           (error as Error).message
         );
 
-        // Check for updates even after failure
+        // Check for updates when install command fails
         if (verbose) {
           console.log(
             '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
@@ -64,13 +83,13 @@ async function main() {
         try {
           await checkAndUpgrade({ verbose, silent: !verbose });
         } catch (updateError) {
-          // Version check failure should not affect main command status
           if (verbose) {
             console.log('Version check failed:', updateError);
           }
         }
 
-        process.exit(1);
+        // Throw error instead of process.exit to allow update operations
+        throw error;
       }
     });
 
@@ -99,7 +118,7 @@ async function main() {
       } catch (error) {
         console.error('Error processing commit message:', error);
 
-        // Check for updates even after failure
+        // Check for updates when exec command fails
         if (verbose) {
           console.log(
             '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
@@ -108,13 +127,13 @@ async function main() {
         try {
           await checkAndUpgrade({ verbose, silent: !verbose });
         } catch (updateError) {
-          // Version check failure should not affect main command status
           if (verbose) {
             console.log('Version check failed:', updateError);
           }
         }
 
-        process.exit(1);
+        // Throw error instead of process.exit to allow update operations
+        throw error;
       }
     });
 
