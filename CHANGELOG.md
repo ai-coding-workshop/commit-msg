@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2025-01-27
+
+### Added
+
+- Add `-v` short parameter support for version display
+  - Support both `commit-msg -v` and `commit-msg --version` commands
+  - Provide more convenient way to check version information
+  - Add comprehensive test coverage for short parameter functionality
+
+### Changed
+
+- Update Commander.js version configuration to support both short and long parameters
+- Enhance test suite with additional version parameter tests
+
 ## [0.1.13] - 2025-09-03
 
 ### Added
