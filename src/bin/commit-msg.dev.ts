@@ -31,16 +31,45 @@ async function main() {
   program
     .command('install')
     .description('Install the commit-msg hook in the current Git repository')
-    .action(async () => {
+    .option('-v, --verbose', 'Enable verbose output')
+    .action(async (options) => {
+      const verbose =
+        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
+      let success = false;
+
       try {
         await install();
+        success = true;
         // Check for updates after successful installation
-        await checkAndUpgrade();
+        try {
+          await checkAndUpgrade({ verbose });
+        } catch (updateError) {
+          // Version check failure should not affect main command status
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
       } catch (error) {
         console.error(
           'Error installing commit-msg hook:',
           (error as Error).message
         );
+
+        // Check for updates even after failure
+        if (verbose) {
+          console.log(
+            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+          );
+        }
+        try {
+          await checkAndUpgrade({ verbose, silent: !verbose });
+        } catch (updateError) {
+          // Version check failure should not affect main command status
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
+
         process.exit(1);
       }
     });
@@ -49,13 +78,42 @@ async function main() {
     .command('exec')
     .description('Execute the commit-msg hook logic')
     .argument('<message-file>', 'path to the commit message file')
-    .action(async (messageFile) => {
+    .option('-v, --verbose', 'Enable verbose output')
+    .action(async (messageFile, options) => {
+      const verbose =
+        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
+      let success = false;
+
       try {
         await exec(messageFile);
+        success = true;
         // Check for updates after successful execution
-        await checkAndUpgrade();
+        try {
+          await checkAndUpgrade({ verbose });
+        } catch (updateError) {
+          // Version check failure should not affect main command status
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
       } catch (error) {
         console.error('Error processing commit message:', error);
+
+        // Check for updates even after failure
+        if (verbose) {
+          console.log(
+            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+          );
+        }
+        try {
+          await checkAndUpgrade({ verbose, silent: !verbose });
+        } catch (updateError) {
+          // Version check failure should not affect main command status
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
+
         process.exit(1);
       }
     });
@@ -64,9 +122,12 @@ async function main() {
   program
     .command('check-update')
     .description('Check for available updates')
-    .action(async () => {
-      const hasUpdate = await checkForUpdatesOnly();
-      if (!hasUpdate) {
+    .option('-v, --verbose', 'Enable verbose output')
+    .action(async (options) => {
+      const verbose =
+        options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
+      const hasUpdate = await checkForUpdatesOnly(verbose);
+      if (!hasUpdate && !verbose) {
         console.log('✅ You are using the latest version');
       }
     });

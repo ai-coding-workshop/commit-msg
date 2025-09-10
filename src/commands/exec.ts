@@ -48,8 +48,7 @@ async function exec(messageFile: string): Promise<void> {
   try {
     // Check if message file exists
     if (!fs.existsSync(messageFile)) {
-      console.error(`Error: Commit message file not found: ${messageFile}`);
-      process.exit(1);
+      throw new Error(`Commit message file not found: ${messageFile}`);
     }
 
     // Check if this is a merge commit (has two or more parents)
@@ -57,7 +56,7 @@ async function exec(messageFile: string): Promise<void> {
       console.log(
         'Merge commit detected, skipping commit-msg hook processing.'
       );
-      process.exit(0);
+      return;
     }
 
     // Read the commit message file
@@ -79,7 +78,7 @@ async function exec(messageFile: string): Promise<void> {
     }
   } catch (error) {
     console.error('Error processing commit message:', error);
-    process.exit(1);
+    throw error;
   }
 }
 

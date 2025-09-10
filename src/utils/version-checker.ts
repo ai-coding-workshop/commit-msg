@@ -27,20 +27,30 @@ export async function checkAndUpgrade(
     checkInterval?: number;
     autoUpgrade?: boolean;
     silent?: boolean;
+    verbose?: boolean;
   } = {}
 ): Promise<void> {
   const {
     checkInterval = 1000 * 60 * 60 * 24, // 24 hours
     autoUpgrade = true,
     silent = false,
+    verbose = false,
   } = options;
 
   // Skip in CI/test environments
   if (process.env.CI || process.env.NODE_ENV === 'test') {
+    if (verbose) {
+      console.log('🔍 Skipping version check in CI/test environment');
+    }
     return;
   }
 
   try {
+    if (verbose) {
+      console.log('🔍 Checking for updates...');
+      console.log(`📦 Current local version: ${pkg.version}`);
+    }
+
     const notifier = updateNotifier({
       pkg,
       updateCheckInterval: checkInterval,
@@ -53,6 +63,12 @@ export async function checkAndUpgrade(
         updateCommand: getUpdateCommand(),
       };
 
+      if (verbose) {
+        console.log('✅ Update found!');
+        console.log(`📦 Local version: ${updateInfo.current}`);
+        console.log(`🌐 Remote version: ${updateInfo.latest}`);
+      }
+
       if (!silent) {
         console.log('\n🔄 New version available!');
         console.log(`Current version: ${updateInfo.current}`);
@@ -60,7 +76,10 @@ export async function checkAndUpgrade(
       }
 
       if (autoUpgrade) {
-        await performUpgrade(updateInfo, silent);
+        if (verbose) {
+          console.log('🚀 Starting automatic upgrade...');
+        }
+        await performUpgrade(updateInfo, silent, verbose);
       } else {
         if (!silent) {
           console.log(
@@ -68,10 +87,17 @@ export async function checkAndUpgrade(
           );
         }
       }
+    } else {
+      if (verbose) {
+        console.log('✅ You are using the latest version');
+        console.log(`📦 Local version: ${pkg.version}`);
+      }
     }
   } catch (error) {
     // Silently handle errors to not block main functionality
-    if (!silent) {
+    if (verbose) {
+      console.log('❌ Version check failed:', error);
+    } else if (!silent) {
       console.debug('Version check failed:', error);
     }
   }
@@ -102,9 +128,14 @@ function getUpdateCommand(): string {
  */
 async function performUpgrade(
   updateInfo: UpdateInfo,
-  silent: boolean = false
+  silent: boolean = false,
+  verbose: boolean = false
 ): Promise<void> {
   return new Promise((resolve) => {
+    if (verbose) {
+      console.log(`📦 Update command: ${updateInfo.updateCommand}`);
+    }
+
     if (!silent) {
       console.log(
         `\n🚀 Starting automatic upgrade to version ${updateInfo.latest}...`
@@ -114,6 +145,10 @@ async function performUpgrade(
     const command = updateInfo.updateCommand.split(' ');
     const [cmd, ...args] = command;
 
+    if (verbose) {
+      console.log(`🔧 Executing: ${cmd} ${args.join(' ')}`);
+    }
+
     const child = spawn(cmd, args, {
       stdio: silent ? 'ignore' : 'inherit',
       shell: true,
@@ -121,12 +156,18 @@ async function performUpgrade(
 
     child.on('close', (code) => {
       if (code === 0) {
+        if (verbose) {
+          console.log('✅ Upgrade process completed successfully');
+        }
         if (!silent) {
           console.log(
             `\n✅ Upgrade completed! Current version: ${updateInfo.latest}`
           );
         }
       } else {
+        if (verbose) {
+          console.log(`❌ Upgrade process failed with exit code: ${code}`);
+        }
         if (!silent) {
           console.log(`\n❌ Upgrade failed with exit code: ${code}`);
           console.log(`Please run manually: ${updateInfo.updateCommand}`);
@@ -136,6 +177,9 @@ async function performUpgrade(
     });
 
     child.on('error', (error) => {
+      if (verbose) {
+        console.log(`❌ Upgrade process error: ${error.message}`);
+      }
       if (!silent) {
         console.log(`\n❌ Error occurred during upgrade: ${error.message}`);
         console.log(`Please run manually: ${updateInfo.updateCommand}`);
@@ -147,6 +191,9 @@ async function performUpgrade(
     setTimeout(() => {
       if (!child.killed) {
         child.kill();
+        if (verbose) {
+          console.log('⏰ Upgrade process timed out');
+        }
         if (!silent) {
           console.log(
             '\n⏰ Upgrade timeout, please run the update command manually'
@@ -161,23 +208,44 @@ async function performUpgrade(
 /**
  * Check for updates without auto-upgrade (for version command)
  */
-export async function checkForUpdatesOnly(): Promise<boolean> {
+export async function checkForUpdatesOnly(
+  verbose: boolean = false
+): Promise<boolean> {
   try {
+    if (verbose) {
+      console.log('🔍 Checking for updates...');
+      console.log(`📦 Current local version: ${pkg.version}`);
+    }
+
     const notifier = updateNotifier({
       pkg,
       updateCheckInterval: 1000 * 60 * 60 * 24,
     });
 
     if (notifier.update) {
+      if (verbose) {
+        console.log('✅ Update found!');
+        console.log(`📦 Local version: ${notifier.update.current}`);
+        console.log(`🌐 Remote version: ${notifier.update.latest}`);
+      }
       console.log('\n🔄 New version available!');
       console.log(`Current version: ${notifier.update.current}`);
       console.log(`Latest version: ${notifier.update.latest}`);
       console.log(`Update command: ${getUpdateCommand()}`);
       return true;
     }
+
+    if (verbose) {
+      console.log('✅ You are using the latest version');
+      console.log(`📦 Local version: ${pkg.version}`);
+    }
     return false;
   } catch (error) {
-    console.debug('Version check failed:', error);
+    if (verbose) {
+      console.log('❌ Version check failed:', error);
+    } else {
+      console.debug('Version check failed:', error);
+    }
     return false;
   }
 }
