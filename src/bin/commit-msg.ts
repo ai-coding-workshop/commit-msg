@@ -10,6 +10,10 @@ const packageJson = require('../../package.json');
 // Import commands using relative paths
 import { install } from '../commands/install.js';
 import { exec } from '../commands/exec.js';
+import {
+  checkAndUpgrade,
+  checkForUpdatesOnly,
+} from '../utils/version-checker.js';
 
 async function loadCommands() {
   return { install, exec };
@@ -31,6 +35,8 @@ async function main() {
     .action(async () => {
       try {
         await install();
+        // Check for updates after successful installation
+        await checkAndUpgrade();
       } catch (error) {
         console.error(
           'Error installing commit-msg hook:',
@@ -44,7 +50,27 @@ async function main() {
     .command('exec')
     .description('Execute the commit-msg hook logic')
     .argument('<message-file>', 'path to the commit message file')
-    .action(exec);
+    .action(async (messageFile) => {
+      try {
+        await exec(messageFile);
+        // Check for updates after successful execution
+        await checkAndUpgrade();
+      } catch (error) {
+        console.error('Error processing commit message:', error);
+        process.exit(1);
+      }
+    });
+
+  // Add check-update command
+  program
+    .command('check-update')
+    .description('Check for available updates')
+    .action(async () => {
+      const hasUpdate = await checkForUpdatesOnly();
+      if (!hasUpdate) {
+        console.log('✅ You are using the latest version');
+      }
+    });
 
   program.parse();
 }

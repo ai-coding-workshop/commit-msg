@@ -39,11 +39,13 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "update-notifier": "^7.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@types/node": "^24.3.0",
+    "@types/update-notifier": "^6.0.8",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.33.0",
