@@ -305,5 +305,52 @@ describe('Version Checker', () => {
       expect(output).toContain('✅ You are using the latest version');
       expect(output).toContain(`📦 Local version: ${currentVersion}`);
     });
+
+    it('should use UPDATE_CHECK_INTERVAL environment variable for check interval', () => {
+      const output = execSync(
+        'node dist/bin/commit-msg.js check-update --verbose',
+        {
+          encoding: 'utf-8',
+          env: { ...process.env, UPDATE_CHECK_INTERVAL: '3600' }, // 1 hour in seconds
+        }
+      );
+
+      expect(output).toContain('🔍 Checking for updates...');
+      expect(output).toContain(`📦 Current local version: ${currentVersion}`);
+      expect(output).toContain('⏰ Check interval: 1 hours');
+      expect(output).toContain('✅ You are using the latest version');
+    });
+
+    it('should use UPDATE_CHECK_INTERVAL environment variable for checkAndUpgrade', async () => {
+      // Temporarily unset NODE_ENV and CI to avoid skipping in test environment
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+      process.env.UPDATE_CHECK_INTERVAL = '1800'; // 30 minutes in seconds
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await checkAndUpgrade({ verbose: true, autoUpgrade: false });
+
+        expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `📦 Current local version: ${currentVersion}`
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('⏰ Check interval: 0.5 hours');
+      } finally {
+        consoleSpy.mockRestore();
+
+        // Restore original environment variables
+        if (originalNodeEnv) {
+          process.env.NODE_ENV = originalNodeEnv;
+        }
+        if (originalCI) {
+          process.env.CI = originalCI;
+        }
+        delete process.env.UPDATE_CHECK_INTERVAL;
+      }
+    });
   });
 });

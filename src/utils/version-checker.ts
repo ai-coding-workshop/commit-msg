@@ -17,6 +17,13 @@ interface UpdateInfo {
 }
 
 /**
+ * Format hours with a maximum of 4 decimal places
+ */
+function formatHours(hours: number): string {
+  return hours.toFixed(4).replace(/\.?0+$/, '');
+}
+
+/**
  * Check for updates and perform auto-upgrade if available
  * @param options Configuration options
  * @returns Promise that resolves when update check/upgrade is complete
@@ -30,7 +37,9 @@ export async function checkAndUpgrade(
   } = {}
 ): Promise<void> {
   const {
-    checkInterval = 1000 * 60 * 60 * 24, // 24 hours
+    checkInterval = process.env.UPDATE_CHECK_INTERVAL
+      ? parseInt(process.env.UPDATE_CHECK_INTERVAL, 10) * 1000
+      : 1000 * 60 * 60 * 24, // 24 hours or from env var (in seconds)
     autoUpgrade = true,
     silent = false,
     verbose = false,
@@ -49,7 +58,9 @@ export async function checkAndUpgrade(
       console.log('🔍 Checking for updates...');
       console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Current local version: ${pkg.version}`);
-      console.log(`⏰ Check interval: ${checkInterval / 1000 / 60 / 60} hours`);
+      console.log(
+        `⏰ Check interval: ${formatHours(checkInterval / 1000 / 60 / 60)} hours`
+      );
     }
 
     const notifier = updateNotifier({
@@ -71,11 +82,11 @@ export async function checkAndUpgrade(
 
         if (timeSinceLastCheck < checkInterval) {
           console.log(
-            `📋 Using cached version data (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: ${checkIntervalHours}h)`
+            `📋 Using cached version data (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
           );
         } else {
           console.log(
-            `🌐 Cache expired, making fresh network request (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: ${checkIntervalHours}h)`
+            `🌐 Cache expired, making fresh network request (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
           );
         }
       } else {
@@ -248,16 +259,22 @@ export async function checkForUpdatesOnly(
   verbose: boolean = false
 ): Promise<boolean> {
   try {
+    const checkInterval = process.env.UPDATE_CHECK_INTERVAL
+      ? parseInt(process.env.UPDATE_CHECK_INTERVAL, 10) * 1000
+      : 1000 * 60 * 60 * 24; // 24 hours or from env var (in seconds)
+
     if (verbose) {
       console.log('🔍 Checking for updates...');
       console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Current local version: ${pkg.version}`);
-      console.log('⏰ Check interval: 24 hours');
+      console.log(
+        `⏰ Check interval: ${formatHours(checkInterval / 1000 / 60 / 60)} hours`
+      );
     }
 
     const notifier = updateNotifier({
       pkg,
-      updateCheckInterval: 1000 * 60 * 60 * 24,
+      updateCheckInterval: checkInterval,
     });
 
     // Check if we're using cached data or making a fresh request
@@ -266,18 +283,19 @@ export async function checkForUpdatesOnly(
         notifier as unknown as { config: { get: (key: string) => unknown } }
       ).config;
       const lastCheck = config?.get?.('lastUpdateCheck');
+      const checkIntervalHours = checkInterval / 1000 / 60 / 60;
 
       if (lastCheck && typeof lastCheck === 'number') {
         const timeSinceLastCheck = Date.now() - lastCheck;
         const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
 
-        if (timeSinceLastCheck < 24 * 60 * 60 * 1000) {
+        if (timeSinceLastCheck < checkInterval) {
           console.log(
-            `📋 Using cached version data (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: 24h)`
+            `📋 Using cached version data (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
           );
         } else {
           console.log(
-            `🌐 Cache expired, making fresh network request (last checked ${hoursSinceLastCheck.toFixed(1)}h ago, interval: 24h)`
+            `🌐 Cache expired, making fresh network request (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
           );
         }
       } else {
@@ -285,7 +303,7 @@ export async function checkForUpdatesOnly(
           '🌐 No cache found, making fresh network request (first time check)'
         );
         console.log(
-          'ℹ️  Note: update-notifier will cache results for 24h to avoid frequent network requests'
+          `ℹ️  Note: update-notifier will cache results for ${checkIntervalHours}h to avoid frequent network requests`
         );
       }
     }
