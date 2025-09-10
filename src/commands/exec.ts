@@ -14,6 +14,7 @@ const envConfigs: [string, string][] = [
   ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
   // Check env variables for IDEs
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
+  ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
   ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
 ];
 
