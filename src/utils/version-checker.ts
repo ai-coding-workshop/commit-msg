@@ -157,15 +157,15 @@ function getUpdateCommand(): string {
   try {
     // Check if installed globally
     execSync('npm list -g ' + pkg.name, { stdio: 'ignore' });
-    return `npm update -g ${pkg.name}`;
+    return `npm update -g ${pkg.name} --yes --force`;
   } catch {
     // Check if installed locally
     try {
       execSync('npm list ' + pkg.name, { stdio: 'ignore' });
-      return `npm update ${pkg.name}`;
+      return `npm update ${pkg.name} --yes --force`;
     } catch {
       // Fallback to install command
-      return `npm install -g ${pkg.name}@latest`;
+      return `npm install -g ${pkg.name}@latest --yes --force`;
     }
   }
 }
@@ -199,9 +199,29 @@ async function performUpgrade(
     const child = spawn(cmd, args, {
       stdio: silent ? 'ignore' : 'inherit',
       shell: true,
+      // Add non-interactive flags to prevent npm from waiting for user input
+      env: {
+        ...process.env,
+        npm_config_yes: 'true',
+        npm_config_force: 'true',
+        // Prevent npm from asking for confirmation
+        CI: 'true',
+      },
     });
 
+    let resolved = false;
+
+    const cleanup = () => {
+      if (!resolved) {
+        resolved = true;
+        if (!child.killed) {
+          child.kill('SIGTERM');
+        }
+      }
+    };
+
     child.on('close', (code) => {
+      cleanup();
       if (code === 0) {
         if (verbose) {
           console.log('✅ Upgrade process completed successfully');
@@ -224,6 +244,7 @@ async function performUpgrade(
     });
 
     child.on('error', (error) => {
+      cleanup();
       if (verbose) {
         console.log(`❌ Upgrade process error: ${error.message}`);
       }
@@ -234,10 +255,21 @@ async function performUpgrade(
       resolve();
     });
 
+    // Handle process exit signals
+    child.on('exit', (code, signal) => {
+      cleanup();
+      if (verbose) {
+        console.log(
+          `🔚 Upgrade process exited with code: ${code}, signal: ${signal}`
+        );
+      }
+      resolve();
+    });
+
     // Set a timeout to prevent hanging
-    setTimeout(() => {
-      if (!child.killed) {
-        child.kill();
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        cleanup();
         if (verbose) {
           console.log('⏰ Upgrade process timed out');
         }
@@ -249,6 +281,13 @@ async function performUpgrade(
         resolve();
       }
     }, 60000); // 60 seconds timeout
+
+    // Clear timeout when process completes
+    const originalResolve = resolve;
+    resolve = () => {
+      clearTimeout(timeoutId);
+      originalResolve();
+    };
   });
 }
 
