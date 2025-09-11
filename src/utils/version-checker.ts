@@ -39,7 +39,7 @@ export async function checkAndUpgrade(
   const {
     checkInterval = process.env.UPDATE_CHECK_INTERVAL
       ? parseInt(process.env.UPDATE_CHECK_INTERVAL, 10) * 1000
-      : 1000 * 60 * 60 * 24, // 24 hours or from env var (in seconds)
+      : 1000 * 60 * 60 * 8, // 8 hours or from env var (in seconds)
     autoUpgrade = true,
     silent = false,
     verbose = false,
@@ -300,7 +300,7 @@ export async function checkForUpdatesOnly(
   try {
     const checkInterval = process.env.UPDATE_CHECK_INTERVAL
       ? parseInt(process.env.UPDATE_CHECK_INTERVAL, 10) * 1000
-      : 1000 * 60 * 60 * 24; // 24 hours or from env var (in seconds)
+      : 1000 * 60 * 60 * 8; // 8 hours or from env var (in seconds)
 
     if (verbose) {
       console.log('🔍 Checking for updates...');
