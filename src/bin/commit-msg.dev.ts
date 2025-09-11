@@ -72,11 +72,6 @@ async function main() {
           }
         }
       } catch (error) {
-        console.error(
-          'Error installing commit-msg hook:',
-          (error as Error).message
-        );
-
         // Check for updates when install command fails
         if (verbose) {
           console.log(
@@ -116,8 +111,6 @@ async function main() {
           }
         }
       } catch (error) {
-        console.error('Error processing commit message:', error);
-
         // Check for updates when exec command fails
         if (verbose) {
           console.log(

@@ -7,6 +7,39 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const packageJson = require('../../package.json');
 
+// Custom error class to avoid stack trace display
+class CleanError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CleanError';
+    // Capture stack trace but remove it
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, CleanError);
+    }
+    // Override stack to be just the message
+    this.stack = `${this.name}: ${this.message}`;
+  }
+}
+
+// Suppress stack trace for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  if (error instanceof CleanError) {
+    console.error('Error:', error.message);
+  } else {
+    console.error('Error:', error.message);
+  }
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  if (reason instanceof CleanError) {
+    console.error('Error:', reason.message);
+  } else {
+    console.error('Error:', reason);
+  }
+  process.exit(1);
+});
+
 // Import commands using relative paths
 import { install } from '../commands/install.js';
 import { exec } from '../commands/exec.js';
@@ -73,11 +106,6 @@ async function main() {
           }
         }
       } catch (error) {
-        console.error(
-          'Error installing commit-msg hook:',
-          (error as Error).message
-        );
-
         // Check for updates when install command fails
         if (verbose) {
           console.log(
@@ -92,8 +120,8 @@ async function main() {
           }
         }
 
-        // Throw error instead of process.exit to allow update operations
-        throw error;
+        // Throw clean error to trigger exitOverride for update check
+        throw new CleanError((error as Error).message);
       }
     });
 
@@ -117,8 +145,6 @@ async function main() {
           }
         }
       } catch (error) {
-        console.error('Error processing commit message:', error);
-
         // Check for updates when exec command fails
         if (verbose) {
           console.log(
@@ -133,8 +159,8 @@ async function main() {
           }
         }
 
-        // Throw error instead of process.exit to allow update operations
-        throw error;
+        // Throw clean error to trigger exitOverride for update check
+        throw new CleanError((error as Error).message);
       }
     });
 
@@ -155,6 +181,12 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Error:', error);
+  // Suppress stack trace for CleanError
+  if (error instanceof CleanError) {
+    console.error('Error:', error.message);
+  } else {
+    // For other errors, only show the message
+    console.error('Error:', (error as Error).message);
+  }
   process.exit(1);
 });

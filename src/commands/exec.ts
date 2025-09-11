@@ -77,8 +77,7 @@ async function exec(messageFile: string): Promise<void> {
       console.log('Commit message processed, no changes needed.');
     }
   } catch (error) {
-    console.error('Error processing commit message:', error);
-    throw error;
+    throw new Error(`Error processing commit message: ${error}`);
   }
 }
 
@@ -566,8 +565,7 @@ function _gen_ChangeIdInput(message: string): string {
 
     return input;
   } catch (error) {
-    console.error('Error generating Change-Id input:', error);
-    throw error;
+    throw new Error(`Error generating Change-Id input: ${error}`);
   }
 }
 

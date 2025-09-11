@@ -152,11 +152,9 @@ async function install(): Promise<void> {
     if (!hooksDir) {
       const error =
         'Not in a Git repository and no global core.hooksPath set. Could not determine directory to install commit-msg hook';
-      console.error('Error:', error);
       throw new Error(error);
     } else if (!path.isAbsolute(hooksDir)) {
       const error = `relative core.hooksPath without a git workdir: ${hooksDir}. Could not determine directory to install commit-msg hook`;
-      console.error('Error:', error);
       throw new Error(error);
     }
   } else {
@@ -189,8 +187,7 @@ async function install(): Promise<void> {
   try {
     hookContent = fs.readFileSync(templatePath, 'utf8');
   } catch (error) {
-    console.error('Error: Could not read hook template:', error);
-    throw error;
+    throw new Error(`Error reading hook template: ${error}`);
   }
 
   try {
@@ -199,8 +196,7 @@ async function install(): Promise<void> {
     console.log('Commit-msg hook installed successfully!');
     console.log(`Hook installed at: ${hookPath}`);
   } catch (error) {
-    console.error('Error installing commit-msg hook:', error);
-    throw error;
+    throw new Error(`Error installing commit-msg hook: ${error}`);
   }
 }
 
