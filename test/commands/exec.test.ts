@@ -279,6 +279,62 @@ describe('exec command utilities', () => {
       );
       expect(result.shouldSave).toBe(false);
     });
+
+    it('should stop processing at scissors line >8', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# ------------------------ >8 ------------------------\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should stop processing at scissors line 8<', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# ------------------------ 8< ------------------------\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should handle scissors line with different dash patterns', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# >8\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should handle scissors line with whitespace', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n#   ------------------------ >8 ------------------------   \n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not treat lines with extra text as scissors', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# ------------------------ >8 ------------------------ extra text\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not treat similar patterns as scissors', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# ------------------------ >9 ------------------------\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not treat normal comments as scissors', () => {
+      const message =
+        'feat: add new feature\n\nThis is content\n# This is a normal comment\n# This should be ignored';
+      const result = cleanCommitMessage(message, '#');
+      expect(result.message).toBe('feat: add new feature\n\nThis is content');
+      expect(result.shouldSave).toBe(false);
+    });
   });
 
   describe('isTemporaryCommit', () => {

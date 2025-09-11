@@ -332,23 +332,34 @@ function cleanCommitMessage(
 
   // Process lines according to requirements
   const processedLines = [];
-  let foundDiff = false;
   let lastLineWasEmpty = true;
   let shouldSave = false; // Track if any changes were made
 
   for (const line of lines) {
     // If we found a diff line, skip all remaining lines
     if (line.startsWith('diff --git ')) {
-      foundDiff = true;
-    }
-
-    // If we're past a diff line, skip all remaining lines
-    if (foundDiff) {
+      // Return what we have so far
       break;
     }
 
     // Skip comment lines
     if (line.startsWith(commentChar)) {
+      // Check if this is a scissors line by removing comment char and dashes
+      //   # ------------------------ >8 ------------------------
+      //   # ------------------------ 8< ------------------------
+      const contentAfterComment = line.substring(commentChar.length);
+      const scissorsPattern = contentAfterComment
+        .replace(/^[\s-]+/, '') // Remove leading whitespace and dashes
+        .replace(/[\s-]+$/, '') // Remove trailing whitespace and dashes
+        .trim();
+
+      // Only match exact scissors patterns: >8 or 8<
+      if (scissorsPattern === '>8' || scissorsPattern === '8<') {
+        // Found scissors line, return what we have so far
+        break;
+      }
+
+      // Ignore other comment lines
       continue;
     }
 
