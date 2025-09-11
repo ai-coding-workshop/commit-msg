@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-01-10
+
+### Added
+
+- Add scissors line detection for commit message processing
+  - Detect Git scissors lines (`>8` and `8<`) in commit messages
+  - Stop processing commit message content when scissors line is found
+  - Support various scissors line formats with dashes and whitespace
+  - Only match exact patterns: `>8` or `8<` (not `>9`, `7<`, or with extra text)
+  - Add comprehensive test coverage for scissors line scenarios
+
+### Fixed
+
+- Fix empty commit message handling
+  - Do not process empty commit messages, let Git handle commit rejection
+  - Return empty message with `shouldSave: false` for empty content
+  - Maintain Git's expected behavior for empty commit rejections
+
+- Fix Signed-off-by only message handling
+  - Detect commit messages containing only Signed-off-by lines and empty lines
+  - Return empty message with `shouldSave: false` for signature-only commits
+  - Prevent processing of template-only messages when using `git commit -s`
+
 ## [0.2.0] - 2025-09-10
 
 ### Added
