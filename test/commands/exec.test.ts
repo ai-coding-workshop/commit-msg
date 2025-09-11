@@ -149,6 +149,32 @@ describe('exec command utilities', () => {
       expect(result.shouldSave).toBe(true);
     });
 
+    it('should return empty message for commit message with only Signed-off-by lines', async () => {
+      const message =
+        'Signed-off-by: John Doe <john@example.com>\nSigned-off-by: Jane Smith <jane@example.com>';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe('');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should return empty message for commit message with only Signed-off-by lines and empty lines', async () => {
+      const message =
+        '\nSigned-off-by: John Doe <john@example.com>\n\nSigned-off-by: Jane Smith <jane@example.com>\n';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe('');
+      expect(result.shouldSave).toBe(false);
+    });
+
     it('should add CoDevelopedBy when needed', async () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
       const config = {

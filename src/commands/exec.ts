@@ -333,7 +333,7 @@ function cleanCommitMessage(
   // Process lines according to requirements
   const processedLines = [];
   let foundDiff = false;
-  let lastLineWasEmpty = false;
+  let lastLineWasEmpty = true;
   let shouldSave = false; // Track if any changes were made
 
   for (const line of lines) {
@@ -375,6 +375,18 @@ function cleanCommitMessage(
     processedLines[processedLines.length - 1] === ''
   ) {
     processedLines.pop();
+  }
+
+  // Check if all lines are s-o-b lines, or empty lines, return empty message
+  const hasNonEmptyNonSignedOffBy = processedLines.some((line) => {
+    const trimmed = line.trim();
+    return (
+      trimmed !== '' && !trimmed.toLowerCase().startsWith('signed-off-by:')
+    );
+  });
+
+  if (!hasNonEmptyNonSignedOffBy) {
+    return { message: '', shouldSave: false };
   }
 
   // Check if we need to insert a blank line between first and second lines
