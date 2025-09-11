@@ -255,9 +255,20 @@ async function processCommitMessage(
     createCoDevelopedBy: true,
   }
 ): Promise<{ message: string; shouldSave: boolean }> {
+  // User does not save the commit message, let Git to abort the commit
+  const trimmedContent = messageContent.trim();
+  if (trimmedContent === '') {
+    return { message: '', shouldSave: false };
+  }
+
   // Clean the message (remove diff, Signed-off-by lines, comments, etc.)
   const { message: cleanedMessage, shouldSave: cleanShouldSave } =
     cleanCommitMessage(messageContent, config.commentChar);
+
+  // User does not save the commit message, let Git to abort the commit
+  if (cleanedMessage.trim() === '') {
+    return { message: '', shouldSave: false };
+  }
 
   // Generate and insert Change-Id and CoDevelopedBy if configured
   const trailers: { ChangeId?: string; CoDevelopedBy?: string } = {};

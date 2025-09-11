@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   processCommitMessage,
   cleanCommitMessage,
@@ -90,6 +90,62 @@ describe('exec command utilities', () => {
       // Check that the original content is preserved
       expect(result.message).toContain('feat: add new feature');
       expect(result.message).toContain('This is a new feature');
+      expect(result.shouldSave).toBe(true);
+    });
+
+    it('should return empty message for empty commit message', async () => {
+      const message = '';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe('');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should return empty message for commit message with only whitespace', async () => {
+      const message = '   \n\t  \n  ';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe('');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should return empty message for commit message with only comments', async () => {
+      const message = '# This is a comment\n# Another comment\n# Final comment';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toBe('');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should process commit message with mixed comments and content', async () => {
+      const message =
+        '# This is a comment\nfeat: add new feature\n# Another comment\nThis is the description';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toContain('Change-Id:');
+      expect(result.message).toContain('feat: add new feature');
+      expect(result.message).toContain('This is the description');
+      expect(result.message).not.toContain('# This is a comment');
+      expect(result.message).not.toContain('# Another comment');
       expect(result.shouldSave).toBe(true);
     });
 
