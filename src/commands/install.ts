@@ -198,7 +198,12 @@ async function install(): Promise<void> {
   }
 
   try {
-    // Write the hook file
+    // Remove the hook file which may be a symlink to other file.
+    if (fs.existsSync(hookPath)) {
+      fs.unlinkSync(hookPath);
+    }
+
+    // Create the hook file
     fs.writeFileSync(hookPath, hookContent, { mode: 0o755 });
     console.log('Commit-msg hook installed successfully!');
     console.log(`Hook installed at: ${hookPath}`);
