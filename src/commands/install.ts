@@ -16,7 +16,14 @@ function getHooksDir(gitDir: string): string {
   let hooksPath = '';
 
   // Check if core.hooksPath is set
-  const gitConfigResult = spawnSync('git', ['config', 'core.hooksPath'], {
+  // In test environment, check COMMIT_MSG_TEST_NO_GLOBAL_HOOKS environment
+  // variable to determine if we should use --local flag
+  const gitConfigArgs =
+    process.env.COMMIT_MSG_TEST_NO_GLOBAL_HOOKS === '1'
+      ? ['config', '--local', 'core.hooksPath']
+      : ['config', 'core.hooksPath'];
+
+  const gitConfigResult = spawnSync('git', gitConfigArgs, {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'ignore'],
   });
