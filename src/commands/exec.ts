@@ -10,12 +10,14 @@ import { spawnSync } from 'child_process';
 const envConfigs: [string, string][] = [
   // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
   ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
+  ['IFLOW_CLI=1', 'iFlow <noreply@iflow.cn>'],
   ['QWEN_CODE=1', 'Qwen-Coder <noreply@alibabacloud.com>'],
   ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
   // Check env variables for IDEs
+  ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
+  ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
   ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
-  ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
 ];
 
 /**

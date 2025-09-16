@@ -630,6 +630,28 @@ describe('exec command utilities', () => {
       expect(getCoDevelopedBy()).toBe('Cursor <noreply@cursor.com>');
     });
 
+    it('should return iFlow CoDevelopedBy when IFLOW_CLI=1 is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.IFLOW_CLI = '1';
+      expect(getCoDevelopedBy()).toBe('iFlow <noreply@iflow.cn>');
+    });
+
+    it('should return Kiro CoDevelopedBy when __CFBundleIdentifier=dev.kiro.desktop is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.__CFBundleIdentifier = 'dev.kiro.desktop';
+      expect(getCoDevelopedBy()).toBe('Kiro <noreply@kiro.dev>');
+    });
+
+    it('should return iFlow CoDevelopedBy when IFLOW_CLI=1 has higher priority than __CFBundleIdentifier=dev.kiro.desktop', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.IFLOW_CLI = '1';
+      process.env.__CFBundleIdentifier = 'dev.kiro.desktop';
+      expect(getCoDevelopedBy()).toBe('iFlow <noreply@iflow.cn>');
+    });
+
     it('should return Claude CoDevelopedBy when CLAUDECODE=1 is set and other variables are also set', () => {
       process.env.CLAUDECODE = '1';
       process.env.QWEN_CODE = '1';
