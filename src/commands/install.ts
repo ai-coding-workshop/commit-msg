@@ -78,7 +78,7 @@ function getHooksDir(gitDir: string): string {
 }
 
 /**
- * Check for existing hooks directories (.husky or .githooks) and return appropriate path
+ * Check for existing hooks directories (.husky/_ or .husky) and return appropriate path
  * @param gitDir The Git directory path
  * @returns The hooks directory path
  */
@@ -101,7 +101,7 @@ function checkForExistingHooksDir(gitDir: string): string {
     const workDirRoot = workDirRootResult.stdout.trim();
 
     // Define hooks directories to check in order of preference
-    const hooksDirectories = ['.husky/_', '.husky', '.githooks'];
+    const hooksDirectories = ['.husky/_', '.husky'];
 
     // Loop through each hooks directory and check if it exists
     for (const hooksDir of hooksDirectories) {
