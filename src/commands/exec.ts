@@ -84,6 +84,23 @@ async function exec(messageFile: string): Promise<void> {
 }
 
 /**
+ * Convert a string value to a boolean.
+ * Accepts 'true', 'yes', 'on', '1' as truthy values (case-insensitive).
+ * Everything else is considered falsy.
+ * @param value The string value to convert
+ * @returns The boolean representation of the value
+ */
+function stringToBoolean(value: string): boolean {
+  const lowerValue = value.toLowerCase();
+  return (
+    lowerValue === 'true' ||
+    lowerValue === 'yes' ||
+    lowerValue === 'on' ||
+    lowerValue === '1'
+  );
+}
+
+/**
  * Get Git configuration options
  * @returns Object containing Git configuration options
  */
@@ -98,39 +115,36 @@ function getGitConfig(): {
   let createCoDevelopedBy = true;
 
   try {
-    // Get gerrit.createChangeId config
-    const createChangeIdResult = spawnSync(
-      'git',
-      ['config', '--bool', 'gerrit.createChangeId'],
-      {
-        encoding: 'utf8',
-      }
-    );
-
-    if (createChangeIdResult.stdout.trim() === 'false') {
-      createChangeId = false;
-    }
-
-    // Get core.commentChar config
-    const commentCharResult = spawnSync('git', ['config', 'core.commentChar'], {
+    // Get all Git config in one call
+    const configResult = spawnSync('git', ['config', '--list', '--includes'], {
       encoding: 'utf8',
     });
 
-    if (commentCharResult.stdout.trim()) {
-      commentChar = commentCharResult.stdout.trim();
-    }
+    if (configResult.status === 0 && configResult.stdout) {
+      // Parse all config lines
+      const configLines = configResult.stdout.trim().split('\n');
 
-    // Get commit-msg.createCoDevelopedBy config
-    const createCoDevelopedByResult = spawnSync(
-      'git',
-      ['config', '--bool', 'commit-msg.coDevelopedBy'],
-      {
-        encoding: 'utf8',
+      // Process each line to find the configs we need
+      for (const line of configLines) {
+        const equalIndex = line.indexOf('=');
+        if (equalIndex === -1) continue;
+
+        const key = line.substring(0, equalIndex).toLowerCase();
+        const value = line.substring(equalIndex + 1);
+
+        // Check for gerrit.createChangeId (boolean)
+        if (key === 'gerrit.createchangeid') {
+          createChangeId = stringToBoolean(value);
+        }
+        // Check for core.commentChar (string)
+        else if (key === 'core.commentchar' && value) {
+          commentChar = value;
+        }
+        // Check for commit-msg.coDevelopedBy (boolean)
+        else if (key === 'commit-msg.codevelopedby') {
+          createCoDevelopedBy = stringToBoolean(value);
+        }
       }
-    );
-
-    if (createCoDevelopedByResult.stdout.trim() === 'false') {
-      createCoDevelopedBy = false;
     }
   } catch (error) {
     // Use default values if git config commands fail
