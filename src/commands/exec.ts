@@ -133,7 +133,11 @@ function getGitConfig(): {
         const value = line.substring(equalIndex + 1);
 
         // Check for gerrit.createChangeId (boolean)
-        if (key === 'gerrit.createchangeid') {
+        if (
+          key === 'gerrit.createchangeid' ||
+          key === 'commit-msg.changeid' ||
+          key === 'commitmsg.changeid'
+        ) {
           createChangeId = stringToBoolean(value);
         }
         // Check for core.commentChar (string)
@@ -141,7 +145,10 @@ function getGitConfig(): {
           commentChar = value;
         }
         // Check for commit-msg.coDevelopedBy (boolean)
-        else if (key === 'commit-msg.codevelopedby') {
+        else if (
+          key === 'commit-msg.codevelopedby' ||
+          key === 'commitmsg.codevelopedby'
+        ) {
           createCoDevelopedBy = stringToBoolean(value);
         }
       }
