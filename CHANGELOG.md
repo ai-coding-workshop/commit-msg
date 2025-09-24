@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-09-24
+
+### Added
+
+- Add support for commit-msg and commitmsg configuration prefixes
+  - Add `commit-msg.changeid` and `commitmsg.changeid` as alternatives to `gerrit.createchangeid`
+  - Add `commit-msg.codevelopedby` and `commitmsg.codevelopedby` as alternatives to `commit-msg.coDevelopedBy`
+  - Provide more consistent naming and better alignment with the tool name
+- Add comprehensive documentation for all configuration options in README.md
+
+### Changed
+
+- Optimize getGitConfig to use single git config call with --list --includes
+- Improve merge commit detection in commit-msg hook
+  - Change from checking HEAD commit parents to checking if the commit message file is '.git/MERGE_MSG'
+  - Provide more reliable way to detect merge commits during the commit-msg hook execution
+
 ## [0.2.4] - 2025-09-17
 
 ### Added
