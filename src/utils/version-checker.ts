@@ -293,6 +293,7 @@ async function performUpgrade(
 
 /**
  * Check for updates without auto-upgrade (for version command)
+ * This version avoids updating the timestamp in update-notifier
  */
 export async function checkForUpdatesOnly(
   verbose: boolean = false
@@ -311,9 +312,11 @@ export async function checkForUpdatesOnly(
       );
     }
 
+    // Use a very long interval to avoid updating the timestamp
+    // This effectively prevents update-notifier from updating the last check time
     const notifier = updateNotifier({
       pkg,
-      updateCheckInterval: checkInterval,
+      updateCheckInterval: Number.MAX_SAFE_INTEGER,
     });
 
     // Check if we're using cached data or making a fresh request
