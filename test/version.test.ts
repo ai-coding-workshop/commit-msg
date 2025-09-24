@@ -131,7 +131,7 @@ describe('commit-msg CLI version tests', () => {
         });
 
         expect(devVOutput).toBe(devVersionOutput);
-      } catch (error) {
+      } catch {
         console.log(
           `Skipping development mode equivalence test for Node.js ${nodeVersion} due to ESM limitations`
         );

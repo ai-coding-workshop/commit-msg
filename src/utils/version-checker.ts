@@ -4,7 +4,6 @@
 
 import updateNotifier from 'update-notifier';
 import { execSync, spawn } from 'child_process';
-import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
