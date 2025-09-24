@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-09-24
+
+### Added
+
+- Implement duplicate trailer filtering for Co-developed-by
+  - Filter out duplicate trailers that have the same user info as the CoDevelopedBy trailer
+  - Prevent duplicate entries when AI tools add both Co-developed-by and Signed-off-by trailers
+
+### Changed
+
+- Enhance Change-Id generation with timestamp and timezone info
+  - Include timestamp and timezone information in Change-Id generation for better uniqueness
+  - Improve Change-Id generation to be more robust and unique
+
+- Enhance merge commit detection and add comprehensive tests
+  - Improve merge commit detection logic to be more accurate
+  - Add comprehensive test coverage for merge commit detection scenarios
+
+### Fixed
+
+- Resolve -v flag conflict between --version and --verbose
+  - Fix conflict where -v was being interpreted as --verbose instead of --version
+  - Ensure -v flag works correctly for version display
+
+- Prevent update-notifier from updating timestamp in checkForUpdatesOnly
+  - Fix issue where checkForUpdatesOnly was incorrectly updating the last update check timestamp
+  - Ensure checkForUpdatesOnly only checks for updates without modifying timestamps
+
 ## [0.2.5] - 2025-09-24
 
 ### Added
