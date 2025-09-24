@@ -168,7 +168,8 @@ async function main() {
   program
     .command('check-update')
     .description('Check for available updates')
-    .option('--verbose', 'Enable verbose output')
+    .option('--verbose', 'Enable verbose output', true) // Set verbose as default
+    .option('--no-verbose', 'Disable verbose output') // Allow disabling verbose
     .action(async (options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
       const hasUpdate = await checkForUpdatesOnly(verbose);
