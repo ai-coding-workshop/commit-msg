@@ -40,6 +40,7 @@ npm run dev -- <command>
 ```
 
 This command now uses `commit-msg.dev.ts` for development mode with the following enhancements:
+
 - Suppresses experimental warnings with `NODE_OPTIONS=--no-warnings`
 - Uses a separate development entry point for better TypeScript import handling
 
@@ -87,7 +88,8 @@ When building the project, only the production files are compiled to the `dist` 
 The tool follows these Git configuration options:
 
 - `gerrit.createChangeId` - Boolean to control whether to generate Change-Id (default: true)
-- `commit-msg.coDevelopedBy` - Boolean to control whether to add Co-Developed-By (default: true)
+- `commit-msg.changeId` - Boolean to control whether to generate Change-Id (alternative to gerrit.createChangeId, default: true)
+- `commit-msg.coDevelopedBy` - Boolean to control whether to add Co-developed-by (default: true)
 - `core.commentChar` - Defines the comment character (defaults to #)
 - `core.hooksPath` - Defines alternative path for hooks
 
