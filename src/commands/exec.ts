@@ -585,6 +585,17 @@ function needsCoDevelopedBy(
   return true;
 }
 
+// Get timezone offset, in +HHMM format
+function getTimezoneOffsetString(date: Date): string {
+  const offset = date.getTimezoneOffset();
+  const absOffset = Math.abs(offset);
+  const hours = Math.floor(absOffset / 60)
+    .toString()
+    .padStart(2, '0');
+  const minutes = (absOffset % 60).toString().padStart(2, '0');
+  return (offset <= 0 ? '+' : '-') + hours + minutes;
+}
+
 /**
  * Generate the input for Change-Id generation based on Git commit data
  * @param message The cleaned commit message
@@ -592,6 +603,11 @@ function needsCoDevelopedBy(
  */
 function _gen_ChangeIdInput(message: string): string {
   try {
+    const now = new Date();
+    // Unix epoch time
+    const timestamp = Math.floor(now.getTime() / 1000);
+    const tzOffset = getTimezoneOffsetString(now);
+
     // Get tree hash
     const treeResult = spawnSync('git', ['write-tree'], {
       encoding: 'utf8',
@@ -615,7 +631,7 @@ function _gen_ChangeIdInput(message: string): string {
     const author =
       authorResult.status === 0
         ? authorResult.stdout.trim()
-        : 'Unknown <unknown@example.com>';
+        : `Unknown <unknown@example.com> ${timestamp} ${tzOffset}`;
 
     // Get committer identity
     const committerResult = spawnSync('git', ['var', 'GIT_COMMITTER_IDENT'], {
@@ -624,7 +640,7 @@ function _gen_ChangeIdInput(message: string): string {
     const committer =
       committerResult.status === 0
         ? committerResult.stdout.trim()
-        : 'Unknown <unknown@example.com>';
+        : `Unknown <unknown@example.com> ${timestamp} ${tzOffset}`;
 
     // Construct the input
     let input = `tree ${tree}\n`;
