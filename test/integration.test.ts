@@ -69,8 +69,12 @@ This is a new feature that adds functionality to the application.
 It includes several improvements and bug fixes.`;
     writeFileSync(messageFile, commitMessage, 'utf8');
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -112,8 +116,12 @@ It includes several improvements and bug fixes.`;
 This is a merge commit message.`;
     writeFileSync(messageFile, mergeCommitMessage, 'utf8');
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -139,8 +147,12 @@ This is a merge commit message.`;
 This is a fixup commit.`;
     writeFileSync(messageFile, fixupCommitMessage, 'utf8');
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -172,8 +184,12 @@ This updates an existing feature.
 Change-Id: ${existingChangeId}`;
     writeFileSync(messageFile, commitMessage, 'utf8');
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -213,8 +229,13 @@ Change-Id: ${existingChangeId}`;
 This is a really awesome feature.`;
     writeFileSync(messageFile, commitMessage, 'utf8');
 
-    // Test with GEMINI_CLI environment variable, but first unset CLAUDECODE
-    const env = { ...process.env, CLAUDECODE: undefined, GEMINI_CLI: '1' };
+    // Test with GEMINI_CLI environment variable, but first unset CLAUDECODE and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: undefined,
+      GEMINI_CLI: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -436,8 +457,12 @@ This adds support for the new commit-msg.changeid configuration.`;
     // Set up git configuration to disable Change-Id using the new config option
     execSync('git config commit-msg.changeid false', { stdio: 'ignore' });
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(
@@ -484,8 +509,12 @@ This adds support for the new commitmsg.changeid configuration.`;
     // Set up git configuration to disable Change-Id using the new config option
     execSync('git config commitmsg.changeid false', { stdio: 'ignore' });
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Execute the commit-msg hook directly
     const execResult = spawnSync(

@@ -68,8 +68,12 @@ describe('commit-msg merge commit handling tests with real git commits', () => {
   });
 
   it('should process first commit in empty repository with Change-Id and Co-developed-by', () => {
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Create first commit
     execSync('echo "Initial content" > file1.txt', { stdio: 'ignore' });
@@ -123,8 +127,12 @@ describe('commit-msg merge commit handling tests with real git commits', () => {
     execSync('echo "Feature content" > file2.txt', { stdio: 'ignore' });
     execSync('git add file2.txt', { stdio: 'ignore' });
 
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Commit on feature branch
     const featureCommitResult = spawnSync(
@@ -195,8 +203,12 @@ describe('commit-msg merge commit handling tests with real git commits', () => {
   });
 
   it('should process regular commit after merge commit with Change-Id and Co-developed-by', () => {
-    // Set environment variable to trigger CoDevelopedBy
-    const env = { ...process.env, CLAUDECODE: '1' };
+    // Set environment variable to trigger CoDevelopedBy and ensure PATH includes dist/bin
+    const env = {
+      ...process.env,
+      CLAUDECODE: '1',
+      PATH: `${path.join(originalCwd, 'dist', 'bin')}:${process.env.PATH || ''}`,
+    };
 
     // Create a commit after the merge
     execSync('echo "Post-merge content" > file4.txt', { stdio: 'ignore' });
