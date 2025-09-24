@@ -90,7 +90,7 @@ async function main() {
   program
     .command('install')
     .description('Install the commit-msg hook in the current Git repository')
-    .option('-v, --verbose', 'Enable verbose output')
+    .option('--verbose', 'Enable verbose output')
     .action(async (options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
 
@@ -129,7 +129,7 @@ async function main() {
     .command('exec')
     .description('Execute the commit-msg hook logic')
     .argument('<message-file>', 'path to the commit message file')
-    .option('-v, --verbose', 'Enable verbose output')
+    .option('--verbose', 'Enable verbose output')
     .action(async (messageFile, options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
 
@@ -168,7 +168,7 @@ async function main() {
   program
     .command('check-update')
     .description('Check for available updates')
-    .option('-v, --verbose', 'Enable verbose output')
+    .option('--verbose', 'Enable verbose output')
     .action(async (options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
       const hasUpdate = await checkForUpdatesOnly(verbose);
