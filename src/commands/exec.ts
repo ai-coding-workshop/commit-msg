@@ -54,8 +54,8 @@ async function exec(messageFile: string): Promise<void> {
       throw new Error(`Commit message file not found: ${messageFile}`);
     }
 
-    // Check if this is a merge commit: editing .git/MERGE_MSG
-    if (path.basename(messageFile) == 'MERGE_MSG') {
+    // Check if this is a merge commit ( Editting MERGE_MSG or editing current merge commit)
+    if (isMergeCommit(messageFile)) {
       console.log(
         'Merge commit detected, skipping commit-msg hook processing.'
       );
@@ -165,6 +165,88 @@ function getGitConfig(): {
     commentChar,
     createCoDevelopedBy,
   };
+}
+
+/**
+ * Check if the current commit is a merge commit (has two or more parents or starts with "Merge ")
+ * @returns True if this is a merge commit
+ */
+function isMergeCommit(messageFile: string): boolean {
+  // Check if this is a merge commit: editing .git/MERGE_MSG
+  if (path.basename(messageFile) == 'MERGE_MSG') {
+    return true;
+  }
+
+  try {
+    // Read the commit message to check if it starts with "Merge "
+    if (fs.existsSync(messageFile)) {
+      const messageContent = fs.readFileSync(messageFile, 'utf8');
+      const firstLine = messageContent.split('\n')[0].trim();
+      if (firstLine.startsWith('Merge ')) {
+        return true;
+      }
+    }
+
+    // Get current tree id
+    const treeResult = spawnSync('git', ['write-tree'], {
+      encoding: 'utf8',
+    });
+
+    // If write-tree fails, we're likely in a situation where we can't determine
+    // if this is a merge commit, so we assume it's not
+    if (treeResult.status !== 0) {
+      // This could happen in various situations like an empty repository or other git issues
+      // In such cases, we conservatively assume it's not a merge commit
+      return false;
+    }
+
+    const tree = treeResult.stdout.trim();
+    // Get HEAD commit tree id
+    const headTreeResult = spawnSync('git', ['rev-parse', 'HEAD^{tree}'], {
+      encoding: 'utf8',
+    });
+
+    // If we can't get the HEAD tree, it might be because HEAD doesn't exist yet (empty repo)
+    // In such cases, we assume it's not a merge commit
+    if (headTreeResult.status !== 0) {
+      return false;
+    }
+
+    if (headTreeResult.stdout && headTreeResult.stdout.trim() !== tree) {
+      // If tree id is not the same as head tree id, we assume a new no-merge
+      // commit is being created, without inspecting prepare-commit-msg.
+      // TODO: call prepare-commit-msg to distinguish an amend merge commit with tree changes.
+      return false;
+    }
+
+    // We are modifying the log message of the current commit, though it's also
+    // possible that we are creating an empty commit.
+    // Check if it's a merge commit by checking the number of parent commits of
+    // HEAD: HEAD^@ expands to all parent commits, one per line
+    const result = spawnSync('git', ['rev-parse', 'HEAD^@'], {
+      encoding: 'utf8',
+    });
+
+    if (result.status === 0 && result.stdout) {
+      // Count the number of parent commits (lines in output)
+      const parents = result.stdout
+        .trim()
+        .split('\n')
+        .filter((line) => line.length > 0);
+      // If there are 2 or more parents, it's a merge commit
+      return parents.length >= 2;
+    }
+
+    // If the command fails or returns no parents, assume it's not a merge commit
+    return false;
+  } catch (error) {
+    // If there's an error, assume it's not a merge commit
+    console.warn(
+      'Warning: Could not determine if this is a merge commit, assuming not'
+    );
+    console.debug('Git rev-parse error:', error);
+    return false;
+  }
 }
 
 /**
@@ -754,6 +836,7 @@ export {
   generateChangeId,
   insertTrailers,
   getCoDevelopedBy,
+  isMergeCommit,
   hasCoDevelopedBy,
   needsCoDevelopedBy,
   clearCoDevelopedByEnvVars,
