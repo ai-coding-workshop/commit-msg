@@ -717,6 +717,64 @@ function generateChangeId(message: string): string {
 }
 
 /**
+ * Extract user info from a trailer line (e.g., "Co-authored-by: John Doe <john@example.com>")
+ * @param line The trailer line
+ * @returns The user info part (name and email) or null if not a valid trailer
+ */
+function extractUserInfoFromTrailer(line: string): string | null {
+  const trailerRegex = /^[a-zA-Z0-9-]+:\s*(.+)$/;
+  const match = line.match(trailerRegex);
+  if (match) {
+    return match[1].trim();
+  }
+  return null;
+}
+
+/**
+ * Filter out duplicate trailers that have the same user info as the CoDevelopedBy trailer
+ * @param lines The existing trailer lines
+ * @param coDevelopedBy The CoDevelopedBy trailer value
+ * @returns Filtered trailer lines without duplicates
+ */
+function filterDuplicateTrailers(
+  lines: string[],
+  coDevelopedBy: string
+): string[] {
+  // Extract user info from CoDevelopedBy
+  const coDevelopedByUserInfo = extractUserInfoFromTrailer(
+    `Co-developed-by: ${coDevelopedBy}`
+  );
+  if (!coDevelopedByUserInfo) {
+    return lines;
+  }
+
+  // Define trailer types to check for duplicates (using lowercase for comparison)
+  const duplicateTrailerPrefixes = ['co-authored-by:', 'signed-off-by:'];
+
+  return lines.filter((line) => {
+    const lowerLine = line.toLowerCase();
+
+    // Check if this is one of the trailer types we want to check for duplicates
+    const isDuplicateTrailer = duplicateTrailerPrefixes.some((prefix) =>
+      lowerLine.startsWith(prefix)
+    );
+
+    if (!isDuplicateTrailer) {
+      return true; // Keep non-duplicate trailer types
+    }
+
+    // Extract user info from this line
+    const userInfo = extractUserInfoFromTrailer(line);
+    if (!userInfo) {
+      return true; // Keep lines we can't parse
+    }
+
+    // Keep the line if the user info is different from CoDevelopedBy
+    return userInfo !== coDevelopedByUserInfo;
+  });
+}
+
+/**
  * Insert trailers into the commit message at the correct position
  * @param message The commit message content
  * @param trailers An object containing trailers to insert (supports ChangeId and CoDevelopedBy)
@@ -797,10 +855,19 @@ function insertTrailers(
   // If we still have existingTrailers in the array, they are real trailers
   // Need to check each trailer to see if it's a comment or not
   if (existingTrailers.length > 0) {
+    // Filter out duplicate trailers if we're adding a CoDevelopedBy trailer
+    let filteredTrailers = existingTrailers;
+    if (trailers.CoDevelopedBy) {
+      filteredTrailers = filterDuplicateTrailers(
+        existingTrailers,
+        trailers.CoDevelopedBy
+      );
+    }
+
     // Find the first non-comment trailer
     let firstNonCommentIndex = -1;
-    for (let i = 0; i < existingTrailers.length; i++) {
-      const trailer = existingTrailers[i];
+    for (let i = 0; i < filteredTrailers.length; i++) {
+      const trailer = filteredTrailers[i];
       // If it's not a comment, this is where we insert the new trailers
       if (
         !trailerCommentRegex1.test(trailer) &&
@@ -813,7 +880,7 @@ function insertTrailers(
 
     if (firstNonCommentIndex === -1) {
       // All trailers are comments, add new trailers at the end
-      outputLines.push(...existingTrailers);
+      outputLines.push(...filteredTrailers);
       if (trailerLines.length > 0) {
         outputLines.push(...trailerLines);
       }
@@ -821,15 +888,15 @@ function insertTrailers(
       // Special handling for CoDevelopedBy trailer placement
       // If ChangeId is empty, don't insert ChangeId trailer
       // Check if the first existing trailer is a ChangeId
-      const firstTrailer = existingTrailers[firstNonCommentIndex];
+      const firstTrailer = filteredTrailers[firstNonCommentIndex];
       if (firstTrailer.startsWith('Change-Id:')) {
         firstNonCommentIndex++;
       }
-      outputLines.push(...existingTrailers.slice(0, firstNonCommentIndex));
+      outputLines.push(...filteredTrailers.slice(0, firstNonCommentIndex));
       if (trailerLines.length > 0) {
         outputLines.push(...trailerLines);
       }
-      outputLines.push(...existingTrailers.slice(firstNonCommentIndex));
+      outputLines.push(...filteredTrailers.slice(firstNonCommentIndex));
     }
   } else {
     // No existing trailers found, just add new trailers at the end
@@ -856,4 +923,6 @@ export {
   hasCoDevelopedBy,
   needsCoDevelopedBy,
   clearCoDevelopedByEnvVars,
+  extractUserInfoFromTrailer,
+  filterDuplicateTrailers,
 };
