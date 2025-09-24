@@ -20,6 +20,50 @@ describe('exec command utilities', () => {
       expect(needsChangeId(message, false)).toBe(false);
     });
 
+    it('should not add Change-Id when commit-msg.changeid is false', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      // Mock process.env to return a specific CoDevelopedBy value
+      const originalEnv = process.env;
+      process.env.CLAUDECODE = '1';
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('Change-Id:');
+      expect(result.message).toContain(
+        'Co-developed-by: Claude <noreply@anthropic.com>'
+      );
+      expect(result.shouldSave).toBe(true);
+
+      // Restore the original env
+      process.env = originalEnv;
+    });
+
+    it('should not add Change-Id when commitmsg.changeid is false', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: true,
+      };
+      // Mock process.env to return a specific CoDevelopedBy value
+      const originalEnv = process.env;
+      process.env.CLAUDECODE = '1';
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('Change-Id:');
+      expect(result.message).toContain(
+        'Co-developed-by: Claude <noreply@anthropic.com>'
+      );
+      expect(result.shouldSave).toBe(true);
+
+      // Restore the original env
+      process.env = originalEnv;
+    });
+
     it('should return false when Change-Id already exists', () => {
       const message = 'feat: add new feature\n\nChange-Id: I123456789abcdef';
       expect(needsChangeId(message, true)).toBe(false);
@@ -718,6 +762,46 @@ describe('exec command utilities', () => {
     it('should return false when createCoDevelopedBy is false', () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
       expect(needsCoDevelopedBy(message, false)).toBe(false);
+    });
+
+    it('should not modify message when commit-msg.codevelopedby is false', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: false,
+      };
+      // Mock process.env to return a specific CoDevelopedBy value
+      const originalEnv = process.env;
+      process.env.CLAUDECODE = '1';
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('Co-developed-by:');
+      expect(result.message).toContain('Change-Id:');
+      expect(result.shouldSave).toBe(true);
+
+      // Restore the original env
+      process.env = originalEnv;
+    });
+
+    it('should not modify message when commitmsg.codevelopedby is false', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: false,
+      };
+      // Mock process.env to return a specific CoDevelopedBy value
+      const originalEnv = process.env;
+      process.env.CLAUDECODE = '1';
+
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('Co-developed-by:');
+      expect(result.message).toContain('Change-Id:');
+      expect(result.shouldSave).toBe(true);
+
+      // Restore the original env
+      process.env = originalEnv;
     });
 
     it('should return false when Co-developed-by already exists', () => {

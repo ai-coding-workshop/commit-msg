@@ -315,6 +315,11 @@ This resolves a critical issue.`;
       }
     );
 
+    // Clean up the git configuration
+    execSync('git config --unset commit-msg.coDevelopedBy', {
+      stdio: 'ignore',
+    });
+
     expect(execResult.status).toBe(0);
 
     // Read the processed commit message
@@ -325,5 +330,194 @@ This resolves a critical issue.`;
 
     // Should NOT have added Co-developed-by due to config
     expect(processedMessage).not.toContain('Co-developed-by:');
+  });
+
+  it('should work with disabled commit-msg.codevelopedby configuration', () => {
+    // Create a commit message file
+    const messageFile = path.join(
+      tempDir,
+      'no-commit-msg-co-developed-message.txt'
+    );
+    const commitMessage = `feat: add new configuration option
+
+This adds support for the new commit-msg.codevelopedby configuration.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Set up git configuration to disable CoDevelopedBy using the new config option
+    execSync('git config commit-msg.codevelopedby false', { stdio: 'ignore' });
+
+    // Set environment variable to trigger CoDevelopedBy (should be ignored due to config)
+    const env = { ...process.env, CLAUDECODE: '1' };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    // Clean up the git configuration
+    execSync('git config --unset commit-msg.codevelopedby', {
+      stdio: 'ignore',
+    });
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should NOT have added Co-developed-by due to config
+    expect(processedMessage).not.toContain('Co-developed-by:');
+  });
+
+  it('should work with disabled commitmsg.codevelopedby configuration', () => {
+    // Create a commit message file
+    const messageFile = path.join(
+      tempDir,
+      'no-commitmsg-co-developed-message.txt'
+    );
+    const commitMessage = `feat: add new configuration option
+
+This adds support for the new commitmsg.codevelopedby configuration.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Set up git configuration to disable CoDevelopedBy using the new config option
+    execSync('git config commitmsg.codevelopedby false', { stdio: 'ignore' });
+
+    // Set environment variable to trigger CoDevelopedBy (should be ignored due to config)
+    const env = { ...process.env, CLAUDECODE: '1' };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    // Clean up the git configuration
+    execSync('git config --unset commitmsg.codevelopedby', { stdio: 'ignore' });
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should NOT have added Co-developed-by due to config
+    expect(processedMessage).not.toContain('Co-developed-by:');
+  });
+
+  it('should work with disabled commit-msg.changeid configuration', () => {
+    // Create a commit message file
+    const messageFile = path.join(
+      tempDir,
+      'no-commit-msg-changeid-message.txt'
+    );
+    const commitMessage = `feat: add new configuration option
+
+This adds support for the new commit-msg.changeid configuration.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Set up git configuration to disable Change-Id using the new config option
+    execSync('git config commit-msg.changeid false', { stdio: 'ignore' });
+
+    // Set environment variable to trigger CoDevelopedBy
+    const env = { ...process.env, CLAUDECODE: '1' };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    // Clean up the git configuration
+    execSync('git config --unset commit-msg.changeid', { stdio: 'ignore' });
+
+    // Print stdout and stderr for debugging
+    console.log('stdout:', execResult.stdout);
+    console.log('stderr:', execResult.stderr);
+    console.log('status:', execResult.status);
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should NOT have added Change-Id due to config
+    expect(processedMessage).not.toContain('Change-Id:');
+
+    // Should have added Co-developed-by
+    expect(processedMessage).toContain(
+      'Co-developed-by: Claude <noreply@anthropic.com>'
+    );
+  });
+
+  it('should work with disabled commitmsg.changeid configuration', () => {
+    // Create a commit message file
+    const messageFile = path.join(tempDir, 'no-commitmsg-changeid-message.txt');
+    const commitMessage = `feat: add new configuration option
+
+This adds support for the new commitmsg.changeid configuration.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Set up git configuration to disable Change-Id using the new config option
+    execSync('git config commitmsg.changeid false', { stdio: 'ignore' });
+
+    // Set environment variable to trigger CoDevelopedBy
+    const env = { ...process.env, CLAUDECODE: '1' };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    // Clean up the git configuration
+    execSync('git config --unset commitmsg.changeid', { stdio: 'ignore' });
+
+    // Print stdout and stderr for debugging
+    console.log('stdout:', execResult.stdout);
+    console.log('stderr:', execResult.stderr);
+    console.log('status:', execResult.status);
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should NOT have added Change-Id due to config
+    expect(processedMessage).not.toContain('Change-Id:');
+
+    // Should have added Co-developed-by
+    expect(processedMessage).toContain(
+      'Co-developed-by: Claude <noreply@anthropic.com>'
+    );
   });
 });
