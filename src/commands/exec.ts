@@ -19,6 +19,11 @@ const envConfigs: [string, string][] = [
   ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
   ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
+  // Check env variables for IDEs in remove development environments
+  ['VSCODE_GIT_ASKPASS_MAIN=*.cursor-server*', 'Cursor <noreply@cursor.com>'],
+  ['BROWSER=*.cursor-server*', 'Cursor <noreply@cursor.com>'],
+  ['VSCODE_GIT_ASKPASS_MAIN=*.qoder-server*', 'Qoder <noreply@qoder.com>'],
+  ['BROWSER=*.qoder-server*', 'Qoder <noreply@qoder.com>'],
 ];
 
 /**
@@ -300,6 +305,21 @@ function getCoDevelopedBy(): string {
         return coDevelopedBy;
       }
       // Continue to next configuration if value is falsy
+      continue;
+    }
+
+    // For pattern matching cases (starts and ends with *, e.g., "*.cursor-server*")
+    if (
+      expectedValue &&
+      expectedValue.startsWith('*') &&
+      expectedValue.endsWith('*') &&
+      expectedValue.length > 2
+    ) {
+      // Extract the pattern between the asterisks
+      const pattern = expectedValue.substring(1, expectedValue.length - 1);
+      if (actualValue.includes(pattern)) {
+        return coDevelopedBy;
+      }
       continue;
     }
   }
