@@ -737,6 +737,33 @@ describe('exec command utilities', () => {
       process.env.CLAUDECODE = '';
       expect(getCoDevelopedBy()).toBe('');
     });
+
+    // Enhanced tests for Cursor and Qoder detection
+    it('should return Cursor CoDevelopedBy when VSCODE_GIT_ASKPASS_MAIN contains .cursor-server', () => {
+      clearCoDevelopedByEnvVars();
+      process.env.VSCODE_GIT_ASKPASS_MAIN =
+        '/home/user/.cursor-server/bin/askpass-main.js';
+      expect(getCoDevelopedBy()).toBe('Cursor <noreply@cursor.com>');
+    });
+
+    it('should return Cursor CoDevelopedBy when BROWSER contains .cursor-server', () => {
+      clearCoDevelopedByEnvVars();
+      process.env.BROWSER = '/home/user/.cursor-server/bin/helpers/browser.sh';
+      expect(getCoDevelopedBy()).toBe('Cursor <noreply@cursor.com>');
+    });
+
+    it('should return Qoder CoDevelopedBy when VSCODE_GIT_ASKPASS_MAIN contains .qoder-server', () => {
+      clearCoDevelopedByEnvVars();
+      process.env.VSCODE_GIT_ASKPASS_MAIN =
+        '/home/user/.qoder-server/bin/askpass-main.js';
+      expect(getCoDevelopedBy()).toBe('Qoder <noreply@qoder.com>');
+    });
+
+    it('should return Qoder CoDevelopedBy when BROWSER contains .qoder-server', () => {
+      clearCoDevelopedByEnvVars();
+      process.env.BROWSER = '/home/user/.qoder-server/bin/helpers/browser.sh';
+      expect(getCoDevelopedBy()).toBe('Qoder <noreply@qoder.com>');
+    });
   });
 
   describe('hasCoDevelopedBy', () => {
