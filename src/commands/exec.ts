@@ -5,9 +5,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { minimatch } from 'minimatch';
 
 // Define environment variable configurations and their corresponding CoDevelopedBy values
 // Format: ["key=value", "co-developed-by-string"]
+// Use glob patterns for value matching with ** to match any characters including /
 const envConfigs: [string, string][] = [
   // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
   ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
@@ -19,6 +21,14 @@ const envConfigs: [string, string][] = [
   ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
   ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
+  // Check env variables for IDEs in remove development environments
+  [
+    'VSCODE_GIT_ASKPASS_MAIN=**/.cursor-server/**',
+    'Cursor <noreply@cursor.com>',
+  ],
+  ['BROWSER=**/.cursor-server/**', 'Cursor <noreply@cursor.com>'],
+  ['VSCODE_GIT_ASKPASS_MAIN=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
+  ['BROWSER=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
 ];
 
 /**
@@ -278,29 +288,25 @@ function getCoDevelopedBy(): string {
       continue;
     }
 
-    // First check for exact match
-    if (
-      expectedValue !== null &&
-      expectedValue !== '*' &&
-      actualValue === expectedValue
-    ) {
-      return coDevelopedBy;
-    }
-
-    // For wildcard cases (*) or null for expectedValue, only return CoDevelopedBy
-    // if the value is actually meaningful
-    if (expectedValue === '*' || expectedValue === null) {
+    // For null expectedValue (just check key existence)
+    if (expectedValue === null) {
       // Only return CoDevelopedBy if the actual value is truthy (not empty, not '0', not 'false', etc.)
       if (
         actualValue &&
         actualValue !== '0' &&
         actualValue !== 'false' &&
+        actualValue !== 'off' &&
         actualValue !== 'no'
       ) {
         return coDevelopedBy;
       }
       // Continue to next configuration if value is falsy
       continue;
+    }
+
+    // Use minimatch for glob pattern matching
+    if (minimatch(actualValue, expectedValue, { dot: true })) {
+      return coDevelopedBy;
     }
   }
 
