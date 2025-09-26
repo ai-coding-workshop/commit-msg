@@ -182,35 +182,13 @@ function getGitConfig(): {
  * @returns True if this is a merge commit
  */
 function isMergeCommit(messageFile: string): boolean {
-  // Check if this is a merge commit: editing .git/MERGE_MSG
-  if (path.basename(messageFile) == 'MERGE_MSG') {
+  // If we are editing ".git/MERGE_MSG" file, we are creaeting a merge commit.
+  if (path.basename(messageFile) === 'MERGE_MSG') {
     return true;
   }
 
+  // We are editting ".git/COMMIT_EDITMSG" file
   try {
-    // Read the commit message to check if it starts with "Merge "
-    if (fs.existsSync(messageFile)) {
-      const messageContent = fs.readFileSync(messageFile, 'utf8');
-      const firstLine = messageContent.split('\n')[0].trim();
-      if (firstLine.startsWith('Merge ')) {
-        return true;
-      }
-    }
-
-    // Get current tree id
-    const treeResult = spawnSync('git', ['write-tree'], {
-      encoding: 'utf8',
-    });
-
-    // If write-tree fails, we're likely in a situation where we can't determine
-    // if this is a merge commit, so we assume it's not
-    if (treeResult.status !== 0) {
-      // This could happen in various situations like an empty repository or other git issues
-      // In such cases, we conservatively assume it's not a merge commit
-      return false;
-    }
-
-    const tree = treeResult.stdout.trim();
     // Get HEAD commit tree id
     const headTreeResult = spawnSync('git', ['rev-parse', 'HEAD^{tree}'], {
       encoding: 'utf8',
@@ -221,18 +199,35 @@ function isMergeCommit(messageFile: string): boolean {
     if (headTreeResult.status !== 0) {
       return false;
     }
+    const headTree = headTreeResult.stdout.trim();
 
-    if (headTreeResult.stdout && headTreeResult.stdout.trim() !== tree) {
-      // If tree id is not the same as head tree id, we assume a new no-merge
-      // commit is being created, without inspecting prepare-commit-msg.
-      // TODO: call prepare-commit-msg to distinguish an amend merge commit with tree changes.
+    // Get the staged tree id we are committing
+    const stagedTreeResult = spawnSync('git', ['write-tree'], {
+      encoding: 'utf8',
+    });
+
+    // If write-tree fails, we're likely in a situation where we can't determine
+    // if this is a merge commit, so we assume it's not
+    if (stagedTreeResult.status !== 0) {
+      // This could happen in various situations like an empty repository or other git issues
+      // In such cases, we conservatively assume it's not a merge commit
+      return false;
+    }
+    const stagedTree = stagedTreeResult.stdout.trim();
+
+    if (headTree !== stagedTree) {
+      // If tree id is not the same as head tree id, there are new changes in
+      // staged area, and because the file we are editting is not "MERGE_MSG",
+      // we are create new no-merge commit.
       return false;
     }
 
-    // We are modifying the log message of the current commit, though it's also
-    // possible that we are creating an empty commit.
-    // Check if it's a merge commit by checking the number of parent commits of
-    // HEAD: HEAD^@ expands to all parent commits, one per line
+    // No changes in staged area, and maybe we are editting HEAD commit
+    // (using git commit --amend), or we are creating an empty commit.
+    // Creating an empty commit is rare, so let's check the type of HEAD
+    // commit, and return true if the HEAD commit is a merge commit (has two
+    // or more parents).
+    // NOTE: HEAD^@ expands to all parent commits, one per line
     const result = spawnSync('git', ['rev-parse', 'HEAD^@'], {
       encoding: 'utf8',
     });
