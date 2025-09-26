@@ -178,6 +178,56 @@ async function main() {
       }
     });
 
+  // Add default command to handle commit message file directly
+  program
+    .description('CLI tool for managing Git commit-msg hooks')
+    .arguments('[message-file]')
+    .action(async (messageFile, options) => {
+      // If no message file is provided, show help
+      if (!messageFile) {
+        program.help();
+        return;
+      }
+
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
+
+      try {
+        // Check if file exists
+        const { existsSync } = await import('fs');
+        if (!existsSync(messageFile)) {
+          throw new CleanError(`Command or file not found: ${messageFile}`);
+        }
+
+        await exec(messageFile);
+        // Check for updates after successful execution
+        try {
+          await checkAndUpgrade({ verbose });
+        } catch (updateError) {
+          // Version check failure should not affect main command status
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
+      } catch (error) {
+        // Check for updates when exec command fails
+        if (verbose) {
+          console.log(
+            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+          );
+        }
+        try {
+          await checkAndUpgrade({ verbose, silent: !verbose });
+        } catch (updateError) {
+          if (verbose) {
+            console.log('Version check failed:', updateError);
+          }
+        }
+
+        // Throw clean error to trigger exitOverride for update check
+        throw new CleanError((error as Error).message);
+      }
+    });
+
   program.parse();
 }
 
