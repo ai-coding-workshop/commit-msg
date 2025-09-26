@@ -5,7 +5,6 @@ import {
   rmSync,
   existsSync,
   writeFileSync,
-  chmodSync,
   symlinkSync,
   readFileSync,
 } from 'fs';
