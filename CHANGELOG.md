@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2025-09-26
+
+### Added
+
+- Add direct execution mode for commit-msg hook
+  - Allow direct execution of commit-msg logic without installing as a Git hook
+  - Improve flexibility for different usage scenarios
+
+### Changed
+
+- Use minimatch for env var glob matching
+  - Replace custom glob matching implementation with minimatch library
+  - Improve reliability and consistency of environment variable matching
+
+### Fixed
+
+- Improve cursor/qoder detection in SSH/DevContainer
+  - Fix issue with cursor/qoder detection when running in SSH or DevContainer environments
+  - Enhance compatibility with different development environments
+
+- Set --verbose as default for check-update command
+  - Make check-update command verbose by default for better user feedback
+  - Improve visibility of update checking process
+
 ## [0.2.6] - 2025-09-24
 
 ### Added
