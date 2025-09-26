@@ -4,6 +4,13 @@
 # Define package name
 PKG="@ai-coding-workshop/commit-msg"
 
+# Upgrade hook version when this script is changed
+COMMIT_MSG_HOOK_VERSION=2
+
+# Export hook path and version for upgrade checking
+export COMMIT_MSG_HOOK_VERSION
+export COMMIT_MSG_HOOK_PATH="$0"
+
 # Debug mode - uncomment the next line to enable debug output
 # DEBUG=1
 

@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { minimatch } from 'minimatch';
+import { fileURLToPath } from 'url';
 
 // Define environment variable configurations and their corresponding CoDevelopedBy values
 // Format: ["key=value", "co-developed-by-string"]
@@ -49,12 +50,66 @@ function clearCoDevelopedByEnvVars(): void {
   }
 }
 
+/**
+ * Check if the hook needs to be upgraded and regenerate it if needed
+ */
+function checkAndUpgradeHook(): void {
+  // Check if we're running from commit-msg hook (shell script with environment variables)
+  if (process.env.COMMIT_MSG_HOOK_PATH) {
+    const hookPath = process.env.COMMIT_MSG_HOOK_PATH;
+    const hookVersion = process.env.COMMIT_MSG_HOOK_VERSION
+      ? parseInt(process.env.COMMIT_MSG_HOOK_VERSION, 10)
+      : 0;
+
+    try {
+      // Get the directory name of the current module
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+
+      // Read the latest template to get the current version
+      const templatePath = path.join(
+        __dirname,
+        '..',
+        'templates',
+        'commit-msg.hook'
+      );
+      const templateContent = fs.readFileSync(templatePath, 'utf8');
+
+      // Extract version from template file using regex
+      const versionMatch = templateContent.match(
+        /COMMIT_MSG_HOOK_VERSION=(\d+)/
+      );
+      if (!versionMatch) {
+        console.warn('Could not determine current hook version from template');
+        return;
+      }
+
+      const currentVersion = parseInt(versionMatch[1], 10);
+
+      // If the hook version is outdated, regenerate it
+      if (hookVersion < currentVersion) {
+        // Write the updated hook
+        fs.writeFileSync(hookPath, templateContent, { mode: 0o755 });
+
+        console.log(
+          `Hook upgraded from version ${hookVersion} to version ${currentVersion} at ${hookPath}`
+        );
+      }
+    } catch (error) {
+      console.warn(`Failed to check/upgrade hook: ${error}`);
+    }
+  }
+}
+
 async function exec(messageFile: string): Promise<void> {
   // Handle debug argument - exit gracefully without error
   if (messageFile === 'DEBUG_MODE_TEST') {
     console.log('Debug mode: exiting without processing');
     process.exit(0);
   }
+
+  // Check if we're running in a shell environment and need to check for hook upgrade
+  checkAndUpgradeHook();
 
   console.log(`Executing commit-msg hook on file: ${messageFile}`);
 
@@ -926,4 +981,5 @@ export {
   clearCoDevelopedByEnvVars,
   extractUserInfoFromTrailer,
   filterDuplicateTrailers,
+  checkAndUpgradeHook,
 };
