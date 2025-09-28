@@ -18,7 +18,8 @@ describe('CLI Entry Point Consistency', () => {
     // 1. Replace ".ts'" with ".js'"
     // 2. Remove " for development" string
     const processedDevContent = devContent
-      .replace(/\.ts'/g, '.js\'')
+      // eslint-disable-next-line quotes
+      .replace(/\.ts'/g, ".js'")
       .replace(/ for development/g, '');
 
     // Compare the contents
