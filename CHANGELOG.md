@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-09-28
+
+### Added
+
+- Make install command the default when no arguments provided
+  - When no arguments are provided, the install command will be executed by default
+  - Improves user experience by reducing the need to remember the install command
+
+- Implement automatic hook upgrade functionality
+  - Add COMMIT_MSG_HOOK_VERSION and COMMIT_MSG_HOOK_PATH environment variables to hook template
+  - Implement dynamic version checking in exec.ts that parses version from template file
+  - Automatically regenerate outdated hooks
+  - Ensure hooks are automatically upgraded to match the current template version when the package is updated
+
+### Changed
+
+- Reuse handleInstallCommand and handleExecCommand functions
+  - Refactor code to reuse command handler functions for better maintainability
+  - Consolidate duplicated logic in command implementations
+
+### Fixed
+
+- Improve merge commit detection logic
+  - Enhance the algorithm for detecting merge commits
+  - Provide more accurate detection of merge commits during hook execution
+
 ## [0.2.7] - 2025-09-26
 
 ### Added
