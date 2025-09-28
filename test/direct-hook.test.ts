@@ -87,7 +87,7 @@ describe('direct commit-msg hook execution tests', () => {
       );
     });
 
-    it('should show help when executed without arguments', () => {
+    it('should run install command when executed without arguments', () => {
       // Execute commit-msg directly without arguments
       const result = spawnSync(
         'node',
@@ -100,9 +100,9 @@ describe('direct commit-msg hook execution tests', () => {
       );
 
       expect(result.status).toBe(0);
-      expect(result.stdout).toContain('Usage: commit-msg');
+      expect(result.stdout).toContain('Installing commit-msg hook...');
       expect(result.stdout).toContain(
-        'CLI tool for managing Git commit-msg hooks'
+        'Commit-msg hook installed successfully!'
       );
     });
 

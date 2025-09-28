@@ -203,14 +203,16 @@ async function main() {
       }
     });
 
-  // Add default command to handle commit message file directly
+  // Add default command to handle commit message file directly or run install when no args
   program
     .description('CLI tool for managing Git commit-msg hooks')
     .arguments('[message-file]')
     .action(async (messageFile, options) => {
-      // If no message file is provided, show help
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
+
+      // If no message file is provided, run install command
       if (!messageFile) {
-        program.help();
+        await handleInstallCommand(verbose, install, checkAndUpgrade);
         return;
       }
 
@@ -220,7 +222,6 @@ async function main() {
         throw new CleanError(`Command or file not found: ${messageFile}`);
       }
 
-      const verbose = getVerboseMode({ ...program.opts(), ...options });
       await handleExecCommand(messageFile, verbose, exec, checkAndUpgrade);
     });
 

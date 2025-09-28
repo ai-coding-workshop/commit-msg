@@ -31,6 +31,14 @@ npx commit-msg install
 This will install the commit-msg hook in your repository's `.git/hooks` directory,
 or in the hook path defined by `core.hooksPath` config variables.
 
+If you run `commit-msg` without any arguments, it will automatically run the `install` command:
+
+```bash
+npx commit-msg
+```
+
+This is equivalent to running `npx commit-msg install`.
+
 ### Development
 
 For development, you can run the tool directly with ts-node:
@@ -82,6 +90,8 @@ When building the project, only the production files are compiled to the `dist` 
 
 - `install` - Install the commit-msg hook in the current Git repository
 - `exec` - Execute the commit-msg hook logic (used internally by the hook)
+
+If no command is specified, the `install` command will be run by default.
 
 ## Configuration
 
