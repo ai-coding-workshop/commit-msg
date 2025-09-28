@@ -17,6 +17,7 @@ const envConfigs: [string, string][] = [
   ['IFLOW_CLI=1', 'iFlow <noreply@iflow.cn>'],
   ['QWEN_CODE=1', 'Qwen-Coder <noreply@alibabacloud.com>'],
   ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
+  ['QODER_CLI=1', 'Qoder CLI <noreply@qoder.com>'],
   // Check env variables for IDEs
   ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
   ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
