@@ -54,6 +54,91 @@ function getVerboseMode(options: { verbose?: boolean } = {}): boolean {
   return options.verbose || process.env.COMMIT_MSG_VERBOSE === 'true';
 }
 
+// Helper function to handle install command with update checking
+async function handleInstallCommand(
+  verbose: boolean,
+  install: () => Promise<void>,
+  checkAndUpgrade: (options?: {
+    checkInterval?: number;
+    autoUpgrade?: boolean;
+    silent?: boolean;
+    verbose?: boolean;
+  }) => Promise<void>
+) {
+  try {
+    await install();
+    // Check for updates after successful installation
+    try {
+      await checkAndUpgrade({ verbose });
+    } catch (updateError) {
+      // Version check failure should not affect main command status
+      if (verbose) {
+        console.log('Version check failed:', updateError);
+      }
+    }
+  } catch (error) {
+    // Check for updates when install command fails
+    if (verbose) {
+      console.log(
+        '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+      );
+    }
+    try {
+      await checkAndUpgrade({ verbose, silent: !verbose });
+    } catch (updateError) {
+      if (verbose) {
+        console.log('Version check failed:', updateError);
+      }
+    }
+
+    // Throw clean error to trigger exitOverride for update check
+    throw new CleanError((error as Error).message);
+  }
+}
+
+// Helper function to handle exec command with update checking
+async function handleExecCommand(
+  messageFile: string,
+  verbose: boolean,
+  exec: (messageFile: string) => Promise<void>,
+  checkAndUpgrade: (options?: {
+    checkInterval?: number;
+    autoUpgrade?: boolean;
+    silent?: boolean;
+    verbose?: boolean;
+  }) => Promise<void>
+) {
+  try {
+    await exec(messageFile);
+    // Check for updates after successful execution
+    try {
+      await checkAndUpgrade({ verbose });
+    } catch (updateError) {
+      // Version check failure should not affect main command status
+      if (verbose) {
+        console.log('Version check failed:', updateError);
+      }
+    }
+  } catch (error) {
+    // Check for updates when exec command fails
+    if (verbose) {
+      console.log(
+        '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
+      );
+    }
+    try {
+      await checkAndUpgrade({ verbose, silent: !verbose });
+    } catch (updateError) {
+      if (verbose) {
+        console.log('Version check failed:', updateError);
+      }
+    }
+
+    // Throw clean error to trigger exitOverride for update check
+    throw new CleanError((error as Error).message);
+  }
+}
+
 async function main() {
   const { install, exec, checkAndUpgrade, checkForUpdatesOnly } =
     await loadCommands();
@@ -91,36 +176,7 @@ async function main() {
     .option('--verbose', 'Enable verbose output')
     .action(async (options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
-
-      try {
-        await install();
-        // Check for updates after successful installation
-        try {
-          await checkAndUpgrade({ verbose });
-        } catch (updateError) {
-          // Version check failure should not affect main command status
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-      } catch (error) {
-        // Check for updates when install command fails
-        if (verbose) {
-          console.log(
-            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
-          );
-        }
-        try {
-          await checkAndUpgrade({ verbose, silent: !verbose });
-        } catch (updateError) {
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-
-        // Throw clean error to trigger exitOverride for update check
-        throw new CleanError((error as Error).message);
-      }
+      await handleInstallCommand(verbose, install, checkAndUpgrade);
     });
 
   program
@@ -130,36 +186,7 @@ async function main() {
     .option('--verbose', 'Enable verbose output')
     .action(async (messageFile, options) => {
       const verbose = getVerboseMode({ ...program.opts(), ...options });
-
-      try {
-        await exec(messageFile);
-        // Check for updates after successful execution
-        try {
-          await checkAndUpgrade({ verbose });
-        } catch (updateError) {
-          // Version check failure should not affect main command status
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-      } catch (error) {
-        // Check for updates when exec command fails
-        if (verbose) {
-          console.log(
-            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
-          );
-        }
-        try {
-          await checkAndUpgrade({ verbose, silent: !verbose });
-        } catch (updateError) {
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-
-        // Throw clean error to trigger exitOverride for update check
-        throw new CleanError((error as Error).message);
-      }
+      await handleExecCommand(messageFile, verbose, exec, checkAndUpgrade);
     });
 
   // Add check-update command
@@ -187,43 +214,14 @@ async function main() {
         return;
       }
 
-      const verbose = getVerboseMode({ ...program.opts(), ...options });
-
-      try {
-        // Check if file exists
-        const { existsSync } = await import('fs');
-        if (!existsSync(messageFile)) {
-          throw new CleanError(`Command or file not found: ${messageFile}`);
-        }
-
-        await exec(messageFile);
-        // Check for updates after successful execution
-        try {
-          await checkAndUpgrade({ verbose });
-        } catch (updateError) {
-          // Version check failure should not affect main command status
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-      } catch (error) {
-        // Check for updates when exec command fails
-        if (verbose) {
-          console.log(
-            '\n🔍 Checking for updates (in case a newer version fixes this issue)...'
-          );
-        }
-        try {
-          await checkAndUpgrade({ verbose, silent: !verbose });
-        } catch (updateError) {
-          if (verbose) {
-            console.log('Version check failed:', updateError);
-          }
-        }
-
-        // Throw clean error to trigger exitOverride for update check
-        throw new CleanError((error as Error).message);
+      // Check if file exists
+      const { existsSync } = await import('fs');
+      if (!existsSync(messageFile)) {
+        throw new CleanError(`Command or file not found: ${messageFile}`);
       }
+
+      const verbose = getVerboseMode({ ...program.opts(), ...options });
+      await handleExecCommand(messageFile, verbose, exec, checkAndUpgrade);
     });
 
   program.parse();
