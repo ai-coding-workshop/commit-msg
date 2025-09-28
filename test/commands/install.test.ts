@@ -522,6 +522,148 @@ describe('install command', () => {
     // Run the install command and expect it to throw an error
     await expect(install()).rejects.toThrow('Template file not found');
   });
+
+  it('should throw error with proper message when template file cannot be read', async () => {
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--git-dir')
+        ) {
+          return {
+            stdout: mockGitDir,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock file system operations
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === mockGitDir) return true;
+      if (filePath === path.join(mockGitDir, 'hooks')) return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    // Mock readFileSync to throw an error
+    vi.mocked(fs.readFileSync).mockImplementation(((
+      _path: fs.PathLike,
+      _options: { encoding: string } | string
+    ) => {
+      throw new Error('ENOENT: no such file or directory');
+    }) as FsReadFileSyncMock);
+
+    // Run the install command and expect it to throw an error with the proper message
+    await expect(install()).rejects.toThrow(
+      'Error reading hook template: Error: ENOENT: no such file or directory'
+    );
+  });
+
+  it('should throw error with proper message when hook installation fails', async () => {
+    // Mock git commands
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--git-dir')
+        ) {
+          return {
+            stdout: mockGitDir,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockGitDir, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        if (
+          command === 'git' &&
+          args.includes('config') &&
+          args.includes('core.hooksPath')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'core.hooksPath not set',
+            status: 1,
+            error: new Error('core.hooksPath not set'),
+            pid: 12345,
+            output: [null, '', 'core.hooksPath not set'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    // Mock file system operations
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === mockGitDir) return true;
+      if (filePath === path.join(mockGitDir, 'hooks')) return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.readFileSync).mockImplementation(((
+      _path: fs.PathLike,
+      _options: { encoding: string } | string
+    ) => {
+      return '# commit-msg hook template';
+    }) as FsReadFileSyncMock);
+
+    // Mock writeFileSync to throw an error
+    vi.mocked(fs.writeFileSync).mockImplementation(((
+      _path: fs.PathLike,
+      _data: string | Buffer,
+      _options?: fs.WriteFileOptions
+    ) => {
+      throw new Error('EACCES: permission denied');
+    }) as FsWriteFileSyncMock);
+
+    // Run the install command and expect it to throw an error with the proper message
+    await expect(install()).rejects.toThrow(
+      'Error installing commit-msg hook: Error: EACCES: permission denied'
+    );
+  });
 });
 
 describe('checkForExistingHooksDir function', () => {

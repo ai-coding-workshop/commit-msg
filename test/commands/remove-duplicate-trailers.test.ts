@@ -96,6 +96,29 @@ describe('remove duplicate trailers functionality', () => {
       const result = filterDuplicateTrailers(lines, coDevelopedBy);
       expect(result).toEqual(lines); // Should not filter non-duplicate trailer types
     });
+
+    it('should return original lines when extractUserInfoFromTrailer returns null for CoDevelopedBy', () => {
+      const lines = [
+        'Co-authored-by: John Doe <john@example.com>',
+        'Signed-off-by: Someone Else <someone@example.com>',
+      ];
+      // Pass an invalid CoDevelopedBy value that would cause extractUserInfoFromTrailer to return null
+      const coDevelopedBy = ''; // Empty string should cause extractUserInfoFromTrailer to return null
+      const result = filterDuplicateTrailers(lines, coDevelopedBy);
+      expect(result).toEqual(lines);
+    });
+
+    it('should keep trailer lines when extractUserInfoFromTrailer returns null for individual lines', () => {
+      const lines = [
+        'Co-authored-by: John Doe <john@example.com>',
+        'co-authored-by:', // Invalid format that causes extractUserInfoFromTrailer to return null
+        'Signed-off-by: Someone Else <someone@example.com>',
+      ];
+      const coDevelopedBy = 'AI Assistant <ai@example.com>';
+      const result = filterDuplicateTrailers(lines, coDevelopedBy);
+      // The invalid trailer line should be kept (not filtered out)
+      expect(result).toEqual(lines);
+    });
   });
 
   describe('insertTrailers with duplicate filtering', () => {

@@ -26,6 +26,19 @@ export default defineConfig({
     // Add test timeout for slower environments
     testTimeout: 60000, // 60 seconds
     hookTimeout: 30000, // 30 seconds
+    // Configure coverage
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**'],
+      exclude: [
+        'src/bin/**',
+        'src/templates/**',
+        '**/*.d.ts',
+        '**/node_modules/**',
+        '**/dist/**',
+      ],
+    },
   },
   // Configure how to resolve imports in the project
   resolve: {
