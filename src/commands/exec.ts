@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 const envConfigs: [string, string][] = [
   // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
   ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
+  ['QODER_CLI=1', 'Claude <noreply@qoder.com>'],
   ['IFLOW_CLI=1', 'iFlow <noreply@iflow.cn>'],
   ['QWEN_CODE=1', 'Qwen-Coder <noreply@alibabacloud.com>'],
   ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
