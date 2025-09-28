@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2025-09-28
+
+### Added
+
+- Add qoder-cli support
+  - Add QODER_CLI environment variable detection
+  - Enable tracking contributions from Qoder CLI tool
+
+### Changed
+
+- Improve code coverage with comprehensive test cases
+  - Add extensive test cases for uncovered lines in exec.test.ts
+  - Add test coverage for clearCoDevelopedByEnvVars function
+  - Add test cases for filterDuplicateTrailers edge cases
+  - Add comprehensive test suites for utility functions
+  - Add error handling test cases for install command
+  - Configure vitest coverage reporting with v8 provider
+
 ## [0.2.8] - 2025-09-28
 
 ### Added
