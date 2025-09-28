@@ -40,16 +40,13 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-// Import commands using relative paths
-import { install } from '../commands/install.js';
-import { exec } from '../commands/exec.js';
-import {
-  checkAndUpgrade,
-  checkForUpdatesOnly,
-} from '../utils/version-checker.js';
-
 async function loadCommands() {
-  return { install, exec };
+  const { install } = await import('../commands/install.js');
+  const { exec } = await import('../commands/exec.js');
+  const { checkAndUpgrade, checkForUpdatesOnly } = await import(
+    '../utils/version-checker.js'
+  );
+  return { install, exec, checkAndUpgrade, checkForUpdatesOnly };
 }
 
 // Helper function to determine verbose mode
@@ -58,7 +55,8 @@ function getVerboseMode(options: { verbose?: boolean } = {}): boolean {
 }
 
 async function main() {
-  const { install, exec } = await loadCommands();
+  const { install, exec, checkAndUpgrade, checkForUpdatesOnly } =
+    await loadCommands();
 
   const program = new Command();
 
