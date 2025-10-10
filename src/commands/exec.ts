@@ -23,7 +23,7 @@ const envConfigs: [string, string][] = [
   ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
   ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
-  // Check env variables for IDEs in remove development environments
+  // Check env variables for IDEs in remote development environments
   [
     'VSCODE_GIT_ASKPASS_MAIN=**/.cursor-server/**',
     'Cursor <noreply@cursor.com>',
