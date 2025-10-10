@@ -18,12 +18,16 @@ const envConfigs: [string, string][] = [
   ['QWEN_CODE=1', 'Qwen-Coder <noreply@alibabacloud.com>'],
   ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
   ['QODER_CLI=1', 'Qoder CLI <noreply@qoder.com>'],
+  
   // Check env variables for IDEs
   ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
   ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
   ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
   ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
-  // Check env variables for IDEs in remove development environments
+  ['__CFBundleIdentifier=com.microsoft.VSCode', 'Visual Studio Code <vscode@microsoft.com>'],
+  ['VSCODE_GIT_ASKPASS_MAIN=**/Visual Studio Code.app/**', 'Visual Studio Code <vscode@microsoft.com>'],
+  
+  // Check env variables for IDEs in remote development environments
   [
     'VSCODE_GIT_ASKPASS_MAIN=**/.cursor-server/**',
     'Cursor <noreply@cursor.com>',
@@ -31,6 +35,7 @@ const envConfigs: [string, string][] = [
   ['BROWSER=**/.cursor-server/**', 'Cursor <noreply@cursor.com>'],
   ['VSCODE_GIT_ASKPASS_MAIN=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
   ['BROWSER=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
+  ['VSCODE_GIT_ASKPASS_MAIN=**/.vscode-server/**', 'Visual Studio Code <vscode@microsoft.com>'],
 ];
 
 /**
