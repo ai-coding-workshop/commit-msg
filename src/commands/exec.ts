@@ -27,7 +27,7 @@ const envConfigs: [string, string][] = [
   ['__CFBundleIdentifier=com.microsoft.VSCode', 'Visual Studio Code <vscode@microsoft.com>'],
   ['VSCODE_GIT_ASKPASS_MAIN=**/Visual Studio Code.app/**', 'Visual Studio Code <vscode@microsoft.com>'],
   
-  // Check env variables for IDEs in remove development environments
+  // Check env variables for IDEs in remote development environments
   [
     'VSCODE_GIT_ASKPASS_MAIN=**/.cursor-server/**',
     'Cursor <noreply@cursor.com>',
