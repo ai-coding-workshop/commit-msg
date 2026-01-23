@@ -435,6 +435,38 @@ describe('exec command utilities', () => {
       expect(lines[lines.length - 1]).toBe(`Change-Id: ${changeId}`);
     });
 
+    it('should not treat Solution: lines as trailers', () => {
+      const message = 'feat: add new feature\n\nSolution: blah blah blah';
+      const changeId = 'I123456789abcdef0123456789abcdef01234567';
+      const result = insertTrailers(message, { ChangeId: changeId });
+      const lines = result.split('\n');
+      const solutionIndex = lines.findIndex(
+        (line) => line === 'Solution: blah blah blah'
+      );
+      const changeIdIndex = lines.findIndex((line) =>
+        line.startsWith('Change-Id:')
+      );
+      expect(solutionIndex).toBeGreaterThan(-1);
+      expect(changeIdIndex).toBeGreaterThan(-1);
+      expect(solutionIndex).toBeLessThan(changeIdIndex);
+      expect(lines[changeIdIndex - 1]).toBe('');
+    });
+
+    it('should not treat dash-leading tokens as trailers', () => {
+      const message = 'feat: add new feature\n\n-Foo: bar';
+      const changeId = 'I123456789abcdef0123456789abcdef01234567';
+      const result = insertTrailers(message, { ChangeId: changeId });
+      const lines = result.split('\n');
+      const dashTokenIndex = lines.findIndex((line) => line === '-Foo: bar');
+      const changeIdIndex = lines.findIndex((line) =>
+        line.startsWith('Change-Id:')
+      );
+      expect(dashTokenIndex).toBeGreaterThan(-1);
+      expect(changeIdIndex).toBeGreaterThan(-1);
+      expect(dashTokenIndex).toBeLessThan(changeIdIndex);
+      expect(lines[changeIdIndex - 1]).toBe('');
+    });
+
     it('should insert Change-Id before non-comment trailers', () => {
       const message =
         'feat: add new feature\n\nThis is a new feature\n\nSigned-off-by: user@example.com';

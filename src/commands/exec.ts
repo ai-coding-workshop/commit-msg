@@ -861,7 +861,8 @@ function insertTrailers(
   let inTrailerSection = false;
 
   // Regex patterns for trailer identification
-  const trailerRegex = /^[a-zA-Z0-9-]{1,64}: /;
+  // Require at least one '-' in the token to avoid "Solution: ..." being a trailer.
+  const trailerRegex = /^[a-zA-Z0-9]+-[a-zA-Z0-9-]{0,63}: /;
   const trailerCommentRegex1 = /^\[.+\]$/;
   const trailerCommentRegex2 = /^\(.+\)$/;
 
