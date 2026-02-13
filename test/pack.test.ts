@@ -5,12 +5,16 @@ import * as path from 'path';
 import * as os from 'os';
 
 // Check Node.js version to determine which dev script to use
+// Node.js 21+: Use tsx (dev)
+// Node.js 19-20: Use tsx (dev:node20)
+// Node.js 18: Use ts-node with CommonJS (dev:node18)
+// <18: Use ts-node with CommonJS (dev:compat)
 const nodeVersion = process.version;
 const nodeMajorVersion = parseInt(nodeVersion.split('.')[0].replace('v', ''));
 const devScript =
-  nodeMajorVersion === 22
+  nodeMajorVersion >= 21
     ? 'dev'
-    : nodeMajorVersion === 20
+    : nodeMajorVersion <= 20 && nodeMajorVersion > 18
       ? 'dev:node20'
       : nodeMajorVersion === 18
         ? 'dev:node18'

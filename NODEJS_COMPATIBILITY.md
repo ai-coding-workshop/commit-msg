@@ -4,18 +4,18 @@ This project supports multiple Node.js versions with different levels of compati
 
 ## Supported Node.js Versions
 
-- **Node.js 22.x**: Full support with all features enabled
-- **Node.js 20.x**: Full support with some ESM limitations
+- **Node.js 21.x+**: Full support with all features enabled
+- **Node.js 19.x-20.x**: Full support with good ESM support
 - **Node.js 18.x**: Limited support with compatibility mode
 
 ## Issues Identified and Resolved
 
 ### 1. ESM Module Support
 
-- **Problem**: Node.js 18.x and 20.x had limited ESM support, causing `ERR_UNKNOWN_FILE_EXTENSION` errors
-- **Root Cause**: TypeScript configuration and ts-node setup incompatible with older Node.js versions
-- **Impact**: Development mode tests failed on Node.js 18.x and 20.x
-- **Solution**: Multiple TypeScript configurations for different Node.js versions
+- **Problem**: Node.js 18.x and 20.x had limited ESM support, causing `ERR_UNKNOWN_FILE_EXTENSION` errors. Node.js 22+ with ts-node also had module resolution issues with `.js` imports in ESM mode.
+- **Root Cause**: TypeScript configuration and ts-node setup incompatible with older Node.js versions. ts-node has limitations resolving `.js` extensions in ESM mode in clean environments.
+- **Impact**: Development mode tests failed on Node.js 18.x, 20.x, and 22+ (with ts-node)
+- **Solution**: Use `tsx` for Node.js 20+ (better ESM support), and multiple TypeScript configurations for different Node.js versions
 
 ### 2. Test Failures
 
@@ -33,20 +33,20 @@ This project supports multiple Node.js versions with different levels of compati
 
 ## Compatibility Details
 
-### Node.js 22.x
+### Node.js 21.x+
 
 - ✅ All tests pass
-- ✅ Development mode works (`npm run dev`)
+- ✅ Development mode works (`npm run dev` with tsx)
 - ✅ Production mode works (`npm run build`)
-- ✅ Full ESM support
+- ✅ Full ESM support with tsx
 - ✅ Complete functionality
 
-### Node.js 20.x
+### Node.js 19.x-20.x
 
 - ✅ Most tests pass
-- ⚠️ Development mode may have ESM limitations
+- ✅ Development mode works (`npm run dev:node20` with tsx)
 - ✅ Production mode works (`npm run build`)
-- ⚠️ Some ESM features may not work as expected
+- ✅ Good ESM support with tsx
 - ✅ Core functionality works
 
 ### Node.js 18.x
@@ -68,9 +68,10 @@ This project supports multiple Node.js versions with different levels of compati
 
 ### 2. Version-Aware Scripts
 
-- **`npm run dev`**: Full ESM support for Node.js 20+
-- **`npm run dev:compat`**: Compatibility mode for older versions
-- **`npm run dev:node18`**: Special mode for Node.js 18
+- **`npm run dev`**: Uses tsx for Node.js 21+ (better ESM support)
+- **`npm run dev:node20`**: Uses tsx for Node.js 19-20 (better ESM support)
+- **`npm run dev:node18`**: Uses ts-node with CommonJS for Node.js 18
+- **`npm run dev:compat`**: Uses ts-node with CommonJS for older versions
 
 ### 3. Smart Test Logic
 
@@ -88,26 +89,33 @@ This project supports multiple Node.js versions with different levels of compati
 ### 5. Documentation and Tools
 
 - **`scripts/test-compatibility.js`**: Automated compatibility testing
-- **`.nvmrc`**: Recommended Node.js version (22.x)
+- **`.nvmrc`**: Recommended Node.js version (22.x, but 21+ works)
 - **Enhanced GitHub Actions**: Better error handling and version detection
 
 ## Scripts by Node.js Version
 
 The project automatically selects the appropriate script based on your Node.js version:
 
-- **Node.js 22.x**: Uses `npm run dev` (full ESM support)
-- **Node.js 20.x**: Uses `npm run dev` (ESM with limitations)
-- **Node.js 18.x**: Uses `npm run dev:node18` (compatibility mode)
+- **Node.js 21.x+**: Uses `npm run dev` (tsx with full ESM support)
+- **Node.js 19.x-20.x**: Uses `npm run dev:node20` (tsx with good ESM support)
+- **Node.js 18.x**: Uses `npm run dev:node18` (ts-node with CommonJS)
+- **Node.js <18.x**: Uses `npm run dev:compat` (ts-node with CommonJS)
 
 ## Script Selection Logic
 
 ```javascript
+// Node.js 21+: Use tsx (dev)
+// Node.js 19-20: Use tsx (dev:node20)
+// Node.js 18: Use ts-node with CommonJS (dev:node18)
+// <18: Use ts-node with CommonJS (dev:compat)
 const devScript =
-  nodeMajorVersion >= 20
+  nodeMajorVersion >= 21
     ? 'dev'
-    : nodeMajorVersion === 18
-      ? 'dev:node18'
-      : 'dev:compat';
+    : nodeMajorVersion <= 20 && nodeMajorVersion > 18
+      ? 'dev:node20'
+      : nodeMajorVersion === 18
+        ? 'dev:node18'
+        : 'dev:compat';
 ```
 
 ## Configuration Files
@@ -121,24 +129,24 @@ const devScript =
 
 | Node.js Version | Build | Production | Development | Tests | Notes              |
 | --------------- | ----- | ---------- | ----------- | ----- | ------------------ |
-| 22.x            | ✅    | ✅         | ✅          | ✅    | Full support       |
-| 20.x            | ✅    | ✅         | ⚠️          | ⚠️    | ESM limitations    |
+| 21.x+           | ✅    | ✅         | ✅          | ✅    | Full support (tsx) |
+| 19.x-20.x       | ✅    | ✅         | ✅          | ✅    | Good support (tsx) |
 | 18.x            | ✅    | ✅         | ⚠️          | ⚠️    | Compatibility mode |
 
 ## Test Behavior by Version
 
-### Node.js 22.x
+### Node.js 21.x+
 
 - All tests run normally
 - Full development mode support
 - Complete ESM functionality
 - No test skips
 
-### Node.js 20.x
+### Node.js 19.x-20.x
 
 - Most tests run normally
-- Development mode with ESM limitations
-- Some tests may be skipped
+- Development mode works with tsx
+- All tests should pass
 - Core functionality fully tested
 
 ### Node.js 18.x
@@ -187,8 +195,8 @@ nvm use 22 && npm run test:compat
 
 ## Recommendations
 
-1. **Development**: Use Node.js 22.x for the best experience
-2. **Production**: Use Node.js 20.x or 22.x
+1. **Development**: Use Node.js 21.x+ for the best experience
+2. **Production**: Use Node.js 19.x+ for good support
 3. **Legacy Support**: Node.js 18.x is supported but with limitations
 4. **Testing**: Run `npm run test:compat` to verify compatibility
 
@@ -199,8 +207,8 @@ If you encounter issues:
 1. Check your Node.js version: `node --version`
 2. Use the appropriate script for your version
 3. For Node.js 18.x, use `npm run dev:node18`
-4. For Node.js 20.x, use `npm run dev`
-5. For Node.js 22.x, use `npm run dev`
+4. For Node.js 19.x-20.x, use `npm run dev:node20`
+5. For Node.js 21.x+, use `npm run dev`
 6. Run compatibility tests: `npm run test:compat`
 
 ## Future Improvements
@@ -214,10 +222,10 @@ If you encounter issues:
 
 The implemented fixes provide:
 
-- ✅ Full functionality on Node.js 22.x
-- ✅ Improved compatibility on Node.js 20.x
-- ✅ Basic functionality on Node.js 18.x
+- ✅ Full functionality on Node.js 21.x+ (using tsx for better ESM support)
+- ✅ Full functionality on Node.js 19.x-20.x (using tsx for better ESM support)
+- ✅ Basic functionality on Node.js 18.x (using ts-node with CommonJS)
 - ✅ Robust CI/CD pipeline for all supported versions
 - ✅ Clear documentation and testing tools
 
-All Node.js versions now have working builds and tests, with graceful degradation for features that aren't fully supported on older versions. The project maintains backward compatibility while providing the best experience on modern Node.js versions.
+All Node.js versions now have working builds and tests. Node.js 19+ uses `tsx` which provides better ESM support and resolves module resolution issues that were present with `ts-node` in clean environments. The project maintains backward compatibility while providing the best experience on modern Node.js versions.

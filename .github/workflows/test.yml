@@ -73,18 +73,22 @@ jobs:
       run: |
         NODE_VERSION=$(node --version | cut -d. -f1 | tr -d v)
         echo "Testing development mode for Node.js $NODE_VERSION"
+        # Node.js 21+: Use tsx (dev)
+        # Node.js 19-20: Use tsx (dev:node20)
+        # Node.js 18: Use ts-node with CommonJS (dev:node18)
+        # <18: Use ts-node with CommonJS (dev:compat)
 
-        if [ "$NODE_VERSION" -eq 22 ]; then
-          echo "Testing with npm run dev"
+        if [ "$NODE_VERSION" -ge 21 ]; then
+          echo "Testing with npm run dev (tsx)"
           npm run dev -- --version
-        elif [ "$NODE_VERSION" -eq 20 ]; then
-          echo "Testing with npm run dev:node20"
+        elif [ "$NODE_VERSION" -le 20 ] && [ "$NODE_VERSION" -gt 18 ]; then
+          echo "Testing with npm run dev:node20 (tsx)"
           npm run dev:node20 -- --version
         elif [ "$NODE_VERSION" -eq 18 ]; then
-          echo "Testing with npm run dev:node18"
+          echo "Testing with npm run dev:node18 (ts-node)"
           npm run dev:node18 -- --version
         else
-          echo "Testing with npm run dev:compat"
+          echo "Testing with npm run dev:compat (ts-node)"
           npm run dev:compat -- --version
         fi
       continue-on-error: true

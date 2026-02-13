@@ -100,8 +100,14 @@ function main() {
     results.production = testProductionMode();
 
     // Test development mode based on Node.js version
-    if (major >= 20) {
+    // Node.js 21+: Use tsx (dev)
+    // Node.js 19-20: Use tsx (dev:node20)
+    // Node.js 18: Use ts-node with CommonJS (dev:node18)
+    // <18: Use ts-node with CommonJS (dev:compat)
+    if (major >= 21) {
       results.development = testDevelopmentMode('dev');
+    } else if (major <= 20 && major > 18) {
+      results.development = testDevelopmentMode('dev:node20');
     } else if (major === 18) {
       results.development = testDevelopmentMode('dev:node18');
     } else {
