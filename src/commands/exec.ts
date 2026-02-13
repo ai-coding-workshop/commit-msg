@@ -7,46 +7,17 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { minimatch } from 'minimatch';
 import { fileURLToPath } from 'url';
-
-// Define environment variable configurations and their corresponding CoDevelopedBy values
-// Format: ["key=value", "co-developed-by-string"]
-// Use glob patterns for value matching with ** to match any characters including /
-const envConfigs: [string, string][] = [
-  // We can run CLI in IDE (such as Cursor and Qoder), so check CLI env variables first
-  ['CLAUDECODE=1', 'Claude <noreply@anthropic.com>'],
-  ['IFLOW_CLI=1', 'iFlow <noreply@iflow.cn>'],
-  ['QWEN_CODE=1', 'Qwen-Coder <noreply@alibabacloud.com>'],
-  ['GEMINI_CLI=1', 'Gemini <noreply@developers.google.com>'],
-  ['QODER_CLI=1', 'Qoder CLI <noreply@qoder.com>'],
-  // Check env variables for IDEs
-  ['CURSOR_TRACE_ID=*', 'Cursor <noreply@cursor.com>'],
-  ['__CFBundleIdentifier=dev.kiro.desktop', 'Kiro <noreply@kiro.dev>'],
-  ['VSCODE_BRAND=Qoder', 'Qoder <noreply@qoder.com>'],
-  ['__CFBundleIdentifier=com.qoder.ide', 'Qoder <noreply@qoder.com>'], // Use this unstable variable until Qoder has a better one
-  // Check env variables for IDEs in remote development environments
-  [
-    'VSCODE_GIT_ASKPASS_MAIN=**/.cursor-server/**',
-    'Cursor <noreply@cursor.com>',
-  ],
-  ['BROWSER=**/.cursor-server/**', 'Cursor <noreply@cursor.com>'],
-  ['VSCODE_GIT_ASKPASS_MAIN=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
-  ['BROWSER=**/.qoder-server/**', 'Qoder <noreply@qoder.com>'],
-];
+import { getAllToolConfigs } from '../ai-tools/index.js';
 
 /**
  * Clear all environment variables used by getCoDevelopedBy function
  * This is useful for testing to ensure clean state
  */
 function clearCoDevelopedByEnvVars(): void {
-  for (const [envConfig] of envConfigs) {
-    const equalIndex = envConfig.indexOf('=');
-    if (equalIndex === -1) {
-      // No '=' found, just a key
-      delete process.env[envConfig];
-    } else {
-      // Split into key and value
-      const key = envConfig.substring(0, equalIndex);
-      delete process.env[key];
+  const configs = getAllToolConfigs();
+  for (const config of configs) {
+    for (const envVar of config.envVars) {
+      delete process.env[envVar.key];
     }
   }
 }
@@ -315,49 +286,43 @@ function isMergeCommit(messageFile: string): boolean {
  * @returns The CoDevelopedBy value or empty string if not configured
  */
 function getCoDevelopedBy(): string {
-  // Check each environment configuration in order
-  for (const [envConfig, coDevelopedBy] of envConfigs) {
-    // Parse the environment configuration
-    const equalIndex = envConfig.indexOf('=');
-    let key: string;
-    let expectedValue: string | null = null;
+  const configs = getAllToolConfigs();
+  const coDevelopedByFormat = (name: string, email: string): string =>
+    `${name} <${email}>`;
 
-    if (equalIndex === -1) {
-      // No '=' found, just a key
-      key = envConfig;
-    } else {
-      // Split into key and value
-      key = envConfig.substring(0, equalIndex);
-      expectedValue = envConfig.substring(equalIndex + 1);
-    }
+  // Check each tool configuration in order (already sorted by priority)
+  for (const config of configs) {
+    // Check each environment variable for this tool
+    for (const envVar of config.envVars) {
+      const key = envVar.key;
+      const expectedValue = envVar.value;
+      const actualValue = process.env[key];
 
-    // Check if the environment variable exists
-    const actualValue = process.env[key];
-
-    if (actualValue === undefined) {
-      // Key doesn't exist, continue to next configuration
-      continue;
-    }
-
-    // For null expectedValue (just check key existence)
-    if (expectedValue === null) {
-      // Only return CoDevelopedBy if the actual value is truthy (not empty, not '0', not 'false', etc.)
-      if (
-        actualValue &&
-        actualValue !== '0' &&
-        actualValue !== 'false' &&
-        actualValue !== 'off' &&
-        actualValue !== 'no'
-      ) {
-        return coDevelopedBy;
+      if (actualValue === undefined) {
+        // Key doesn't exist, continue to next environment variable
+        continue;
       }
-      // Continue to next configuration if value is falsy
-      continue;
-    }
 
-    // Use minimatch for glob pattern matching
-    if (minimatch(actualValue, expectedValue, { dot: true })) {
-      return coDevelopedBy;
+      // Handle wildcard pattern '*' (any non-empty value)
+      if (expectedValue === '*') {
+        // Only return CoDevelopedBy if the actual value is truthy (not empty, not '0', not 'false', etc.)
+        if (
+          actualValue &&
+          actualValue !== '0' &&
+          actualValue !== 'false' &&
+          actualValue !== 'off' &&
+          actualValue !== 'no'
+        ) {
+          return coDevelopedByFormat(config.userName, config.userEmail);
+        }
+        // Continue to next environment variable if value is falsy
+        continue;
+      }
+
+      // Use minimatch for glob pattern matching
+      if (minimatch(actualValue, expectedValue, { dot: true })) {
+        return coDevelopedByFormat(config.userName, config.userEmail);
+      }
     }
   }
 
