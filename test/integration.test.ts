@@ -310,6 +310,108 @@ This feature uses AI technology to enhance the application.`;
     );
   });
 
+  it('should work with CODEX_MANAGED_BY_NPM environment variable', () => {
+    // Create a commit message file
+    const messageFile = path.join(tempDir, 'codex-npm-message.txt');
+    const commitMessage = `feat: implement feature with Codex
+
+This feature was developed using Codex via npm.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Test with CODEX_MANAGED_BY_NPM environment variable, but first unset higher priority variables
+    const env = {
+      ...process.env,
+      CLAUDECODE: undefined,
+      CODEX_MANAGED_BY_NPM: '1',
+      QWEN_CODE: undefined,
+      GEMINI_CLI: undefined,
+      VSCODE_BRAND: undefined,
+      CURSOR_TRACE_ID: undefined,
+    };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should have added Co-developed-by for Codex
+    expect(processedMessage).toContain(
+      'Co-developed-by: Codex <noreply@openai.com>'
+    );
+
+    // Verify original content is preserved
+    expect(processedMessage).toContain('feat: implement feature with Codex');
+    expect(processedMessage).toContain(
+      'This feature was developed using Codex via npm.'
+    );
+  });
+
+  it('should work with CODEX_MANAGED_BY_BUN environment variable', () => {
+    // Create a commit message file
+    const messageFile = path.join(tempDir, 'codex-bun-message.txt');
+    const commitMessage = `feat: implement feature with Codex
+
+This feature was developed using Codex via bun.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Test with CODEX_MANAGED_BY_BUN environment variable, but first unset higher priority variables
+    const env = {
+      ...process.env,
+      CLAUDECODE: undefined,
+      CODEX_MANAGED_BY_BUN: '1',
+      QWEN_CODE: undefined,
+      GEMINI_CLI: undefined,
+      VSCODE_BRAND: undefined,
+      CURSOR_TRACE_ID: undefined,
+    };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should have added Co-developed-by for Codex
+    expect(processedMessage).toContain(
+      'Co-developed-by: Codex <noreply@openai.com>'
+    );
+
+    // Verify original content is preserved
+    expect(processedMessage).toContain('feat: implement feature with Codex');
+    expect(processedMessage).toContain(
+      'This feature was developed using Codex via bun.'
+    );
+  });
+
   it('should work with disabled CoDevelopedBy configuration', () => {
     // Create a commit message file
     const messageFile = path.join(tempDir, 'no-co-developed-message.txt');

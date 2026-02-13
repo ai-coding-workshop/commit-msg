@@ -69,6 +69,7 @@ function compareByPriority(a: AIToolConfig, b: AIToolConfig): number {
 
 // Import all tool configurations
 import claudeConfig from './claude.js';
+import codexConfig from './codex.js';
 import cursorConfig from './cursor.js';
 import geminiConfig from './gemini.js';
 import iflowConfig from './iflow.js';
@@ -83,6 +84,7 @@ import qwenCodeConfig from './qwen-code.js';
  */
 const allConfigs: AIToolConfig[] = [
   claudeConfig,
+  codexConfig,
   iflowConfig,
   qwenCodeConfig,
   geminiConfig,

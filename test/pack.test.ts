@@ -413,6 +413,62 @@ describe('commit-msg CLI npm pack tests', () => {
       );
     });
 
+    it('should generate Co-developed-by for CODEX_MANAGED_BY_NPM in installed package', () => {
+      const messageFile = path.join(tempDir, 'codevelopedby-codex-npm.txt');
+      const commitMessage = 'feat: test codex npm co-developed-by';
+      writeFileSync(messageFile, commitMessage, 'utf8');
+
+      const env = {
+        ...process.env,
+        CODEX_MANAGED_BY_NPM: '1',
+      };
+
+      const execResult = spawnSync(
+        'node',
+        [installedBinPath, 'exec', messageFile],
+        {
+          encoding: 'utf-8',
+          timeout: 30000,
+          env: env,
+        }
+      );
+
+      expect(execResult.status).toBe(0);
+
+      const processedMessage = readFileSync(messageFile, 'utf8');
+      expect(processedMessage).toContain(
+        'Co-developed-by: Codex <noreply@openai.com>'
+      );
+    });
+
+    it('should generate Co-developed-by for CODEX_MANAGED_BY_BUN in installed package', () => {
+      const messageFile = path.join(tempDir, 'codevelopedby-codex-bun.txt');
+      const commitMessage = 'feat: test codex bun co-developed-by';
+      writeFileSync(messageFile, commitMessage, 'utf8');
+
+      const env = {
+        ...process.env,
+        CODEX_MANAGED_BY_BUN: '1',
+      };
+
+      const execResult = spawnSync(
+        'node',
+        [installedBinPath, 'exec', messageFile],
+        {
+          encoding: 'utf-8',
+          timeout: 30000,
+          env: env,
+        }
+      );
+
+      expect(execResult.status).toBe(0);
+
+      const processedMessage = readFileSync(messageFile, 'utf8');
+      expect(processedMessage).toContain(
+        'Co-developed-by: Codex <noreply@openai.com>'
+      );
+    });
+
     it('should respect priority order (CLI over IDE) in installed package', () => {
       const messageFile = path.join(tempDir, 'priority-test.txt');
       const commitMessage = 'feat: test priority';
@@ -462,7 +518,7 @@ describe('commit-msg CLI npm pack tests', () => {
       const configs = installedAITools.getAllToolConfigs();
       expect(configs).toBeDefined();
       expect(Array.isArray(configs)).toBe(true);
-      expect(configs.length).toBe(8); // Should have 8 tools
+      expect(configs.length).toBe(9); // Should have 9 tools
 
       // Verify all configs have required fields
       for (const config of configs) {

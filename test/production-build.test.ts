@@ -52,8 +52,8 @@ describe('Production Build Tests', () => {
   describe('Configuration Structure Tests', () => {
     it('should have correct number of tool configurations', () => {
       const configs = productionAITools.getAllToolConfigs();
-      // Should have 8 tools: claude, iflow, qwen-code, gemini, qoder-cli, cursor, kiro, qoder-ide
-      expect(configs.length).toBe(8);
+      // Should have 9 tools: claude, codex, iflow, qwen-code, gemini, qoder-cli, cursor, kiro, qoder-ide
+      expect(configs.length).toBe(9);
     });
 
     it('should have all required fields in each configuration', () => {
@@ -123,6 +123,7 @@ describe('Production Build Tests', () => {
       const configs = productionAITools.getAllToolConfigs();
       const toolNames = configs.map((c) => c.userName);
       const expectedTools = [
+        'Codex',
         'Claude',
         'iFlow',
         'Qwen-Coder',
@@ -194,6 +195,20 @@ describe('Production Build Tests', () => {
       process.env.CURSOR_TRACE_ID = 'any-value';
       const result = productionExec.getCoDevelopedBy();
       expect(result).toBe('Cursor <noreply@cursor.com>');
+    });
+
+    it('should return Codex CoDevelopedBy when CODEX_MANAGED_BY_NPM=1 is set', () => {
+      productionExec.clearCoDevelopedByEnvVars();
+      process.env.CODEX_MANAGED_BY_NPM = '1';
+      const result = productionExec.getCoDevelopedBy();
+      expect(result).toBe('Codex <noreply@openai.com>');
+    });
+
+    it('should return Codex CoDevelopedBy when CODEX_MANAGED_BY_BUN=1 is set', () => {
+      productionExec.clearCoDevelopedByEnvVars();
+      process.env.CODEX_MANAGED_BY_BUN = '1';
+      const result = productionExec.getCoDevelopedBy();
+      expect(result).toBe('Codex <noreply@openai.com>');
     });
 
     it('should return Kiro CoDevelopedBy when __CFBundleIdentifier=dev.kiro.desktop is set', () => {

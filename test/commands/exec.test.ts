@@ -787,6 +787,20 @@ describe('exec command utilities', () => {
       expect(getCoDevelopedBy()).toBe('iFlow <noreply@iflow.cn>');
     });
 
+    it('should return Codex CoDevelopedBy when CODEX_MANAGED_BY_NPM=1 is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.CODEX_MANAGED_BY_NPM = '1';
+      expect(getCoDevelopedBy()).toBe('Codex <noreply@openai.com>');
+    });
+
+    it('should return Codex CoDevelopedBy when CODEX_MANAGED_BY_BUN=1 is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.CODEX_MANAGED_BY_BUN = '1';
+      expect(getCoDevelopedBy()).toBe('Codex <noreply@openai.com>');
+    });
+
     it('should return Kiro CoDevelopedBy when __CFBundleIdentifier=dev.kiro.desktop is set', () => {
       // Clear all environment variables to ensure proper order testing
       clearCoDevelopedByEnvVars();
