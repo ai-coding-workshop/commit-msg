@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2026-02-13
+
+### Added
+
+- Add Codex AI coding tool support
+  - Add CODEX_MANAGED_BY_NPM and CODEX_MANAGED_BY_BUN environment variable detection
+  - Enable tracking contributions from Codex AI coding tool
+  - Add comprehensive test coverage for Codex environment variables
+
+- Add OpenCode AI coding tool support
+  - Add OPENCODE environment variable detection
+  - Enable tracking contributions from OpenCode AI coding tool
+  - Add comprehensive test coverage for OpenCode environment variable
+
+- Refactor AI tool detection to use modular config files
+  - Move from hardcoded array to individual configuration files for each AI tool
+  - Support tool type classification (CLI, PLUGIN, IDE, OTHERS) with priority ordering
+  - Improve maintainability and extensibility for adding new AI tool support
+  - Each tool now has its own configuration file with type, userName, userEmail, and envVars
+
+### Changed
+
+- Improve Node.js version compatibility
+  - Use tsx for Node.js 21+ to resolve ESM module resolution issues
+  - Update script selection logic to handle Node.js 21+ correctly
+  - Update compatibility documentation and test scripts
+
+### Fixed
+
+- Fix ESM module resolution issues in Node.js 22+
+  - Replace ts-node with tsx for Node.js 22+ development mode
+  - Resolve "Cannot find module" errors in clean environments
+  - Ensure development mode works correctly across all supported Node.js versions
+
+- Fix unstable status checks in hook tests
+  - Add debug output to help diagnose test failures
+  - Remove environment-dependent status checks that were causing test instability
+  - Keep important assertions about warning messages in stderr
+
+### Testing
+
+- Enhance npm pack tests with comprehensive installed package tests
+  - Add tests for all CLI commands (install, exec, check-update, --help)
+  - Add tests for core functionality in installed package
+  - Add module import and configuration loading tests
+  - Add Git integration tests in real Git repository
+
+- Add production build tests to verify compiled code
+  - Verify module import and configuration loading from compiled code
+  - Ensure consistency between development and production builds
+  - Test functionality of getCoDevelopedBy() with various environment variables
+
 ## [0.2.10] - 2026-01-23
 
 ### Fixed
