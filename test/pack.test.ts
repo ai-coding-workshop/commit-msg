@@ -469,6 +469,34 @@ describe('commit-msg CLI npm pack tests', () => {
       );
     });
 
+    it('should generate Co-developed-by for OPENCODE in installed package', () => {
+      const messageFile = path.join(tempDir, 'codevelopedby-opencode.txt');
+      const commitMessage = 'feat: test opencode co-developed-by';
+      writeFileSync(messageFile, commitMessage, 'utf8');
+
+      const env = {
+        ...process.env,
+        OPENCODE: '1',
+      };
+
+      const execResult = spawnSync(
+        'node',
+        [installedBinPath, 'exec', messageFile],
+        {
+          encoding: 'utf-8',
+          timeout: 30000,
+          env: env,
+        }
+      );
+
+      expect(execResult.status).toBe(0);
+
+      const processedMessage = readFileSync(messageFile, 'utf8');
+      expect(processedMessage).toContain(
+        'Co-developed-by: OpenCode <noreply@opencode.ai>'
+      );
+    });
+
     it('should respect priority order (CLI over IDE) in installed package', () => {
       const messageFile = path.join(tempDir, 'priority-test.txt');
       const commitMessage = 'feat: test priority';
@@ -518,7 +546,7 @@ describe('commit-msg CLI npm pack tests', () => {
       const configs = installedAITools.getAllToolConfigs();
       expect(configs).toBeDefined();
       expect(Array.isArray(configs)).toBe(true);
-      expect(configs.length).toBe(9); // Should have 9 tools
+      expect(configs.length).toBe(10); // Should have 10 tools
 
       // Verify all configs have required fields
       for (const config of configs) {

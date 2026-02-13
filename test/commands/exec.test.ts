@@ -801,6 +801,13 @@ describe('exec command utilities', () => {
       expect(getCoDevelopedBy()).toBe('Codex <noreply@openai.com>');
     });
 
+    it('should return OpenCode CoDevelopedBy when OPENCODE=1 is set', () => {
+      // Clear all environment variables to ensure proper order testing
+      clearCoDevelopedByEnvVars();
+      process.env.OPENCODE = '1';
+      expect(getCoDevelopedBy()).toBe('OpenCode <noreply@opencode.ai>');
+    });
+
     it('should return Kiro CoDevelopedBy when __CFBundleIdentifier=dev.kiro.desktop is set', () => {
       // Clear all environment variables to ensure proper order testing
       clearCoDevelopedByEnvVars();

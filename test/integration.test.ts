@@ -412,6 +412,59 @@ This feature was developed using Codex via bun.`;
     );
   });
 
+  it('should work with OPENCODE environment variable', () => {
+    // Create a commit message file
+    const messageFile = path.join(tempDir, 'opencode-message.txt');
+    const commitMessage = `feat: implement feature with OpenCode
+
+This feature was developed using OpenCode.`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    // Test with OPENCODE environment variable, but first unset higher priority variables
+    const env = {
+      ...process.env,
+      CLAUDECODE: undefined,
+      CODEX_MANAGED_BY_NPM: undefined,
+      CODEX_MANAGED_BY_BUN: undefined,
+      OPENCODE: '1',
+      QWEN_CODE: undefined,
+      GEMINI_CLI: undefined,
+      VSCODE_BRAND: undefined,
+      CURSOR_TRACE_ID: undefined,
+    };
+
+    // Execute the commit-msg hook directly
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    expect(execResult.status).toBe(0);
+
+    // Read the processed commit message
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    // Should have added Change-Id
+    expect(processedMessage).toMatch(/Change-Id: I[a-f0-9]{8,}/);
+
+    // Should have added Co-developed-by for OpenCode
+    expect(processedMessage).toContain(
+      'Co-developed-by: OpenCode <noreply@opencode.ai>'
+    );
+
+    // Verify original content is preserved
+    expect(processedMessage).toContain('feat: implement feature with OpenCode');
+    expect(processedMessage).toContain(
+      'This feature was developed using OpenCode.'
+    );
+  });
+
   it('should work with disabled CoDevelopedBy configuration', () => {
     // Create a commit message file
     const messageFile = path.join(tempDir, 'no-co-developed-message.txt');

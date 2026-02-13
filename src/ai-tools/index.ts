@@ -74,6 +74,7 @@ import cursorConfig from './cursor.js';
 import geminiConfig from './gemini.js';
 import iflowConfig from './iflow.js';
 import kiroConfig from './kiro.js';
+import opencodeConfig from './opencode.js';
 import qoderCliConfig from './qoder-cli.js';
 import qoderIdeConfig from './qoder-ide.js';
 import qwenCodeConfig from './qwen-code.js';
@@ -86,6 +87,7 @@ const allConfigs: AIToolConfig[] = [
   claudeConfig,
   codexConfig,
   iflowConfig,
+  opencodeConfig,
   qwenCodeConfig,
   geminiConfig,
   qoderCliConfig,
