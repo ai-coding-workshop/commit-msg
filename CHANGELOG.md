@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2026-03-16
+
+### Added
+
+- Add Cursor agent support via `CURSOR_AGENT=1` environment variable
+- Add `remove` value for commit-msg.codevelopedby to strip matching AI trailers
+  without adding Co-developed-by (skips fixup!/squash!)
+
+### Changed
+
+- Filter made-with trailer when adding Co-developed-by
+
 ## [0.2.13] - 2026-02-24
 
 ### Added
