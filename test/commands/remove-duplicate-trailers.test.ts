@@ -277,6 +277,36 @@ describe('remove duplicate trailers functionality', () => {
       expect(humanCoAuthoredCount).toBe(1);
     });
 
+    it('should filter trailers with filterOnlyIdentity (remove mode) without adding Co-developed-by', () => {
+      const message =
+        'feat: add feature\n\nMade-with: Cursor\nCo-authored-by: Cursor <noreply@cursor.com>\nCo-authored-by: Human <human@example.com>';
+      const result = insertTrailers(
+        message,
+        {},
+        {
+          filterOnlyIdentity: 'Cursor <noreply@cursor.com>',
+        }
+      );
+      const lines = result.split('\n');
+
+      expect(lines.some((l) => l.toLowerCase().startsWith('made-with:'))).toBe(
+        false
+      );
+      expect(
+        lines.some(
+          (l) => l.startsWith('Co-authored-by:') && l.includes('Cursor <')
+        )
+      ).toBe(false);
+      expect(
+        lines.some(
+          (l) =>
+            l.startsWith('Co-authored-by:') &&
+            l.includes('Human <human@example.com>')
+        )
+      ).toBe(true);
+      expect(lines.some((l) => l.startsWith('Co-developed-by:'))).toBe(false);
+    });
+
     it('should filter made-with: Cursor when embedding Co-developed-by', () => {
       const message =
         'feat: add feature\n\nMade-with: Cursor\nCo-authored-by: Cursor <noreply@cursor.com>\nCo-authored-by: Human <human@example.com>';

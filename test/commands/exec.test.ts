@@ -980,6 +980,89 @@ describe('exec command utilities', () => {
     });
   });
 
+  describe('createCoDevelopedBy remove mode', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      clearCoDevelopedByEnvVars();
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should remove matching trailers when createCoDevelopedBy is remove', async () => {
+      process.env.CURSOR_TRACE_ID = '1';
+      const message =
+        'feat: add feature\n\nCo-authored-by: Cursor <noreply@cursor.com>\nMade-with: Cursor\nCo-authored-by: Human <human@example.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: 'remove' as const,
+      };
+
+      const result = await processCommitMessage(message, config);
+
+      expect(result.message).not.toContain('Co-authored-by: Cursor');
+      expect(result.message).not.toContain('Made-with: Cursor');
+      expect(result.message).toContain(
+        'Co-authored-by: Human <human@example.com>'
+      );
+      expect(result.message).not.toContain('Co-developed-by:');
+      expect(result.shouldSave).toBe(true);
+    });
+
+    it('should skip trailer removal for fixup! when createCoDevelopedBy is remove', async () => {
+      process.env.CURSOR_TRACE_ID = '1';
+      const message =
+        'fixup! feat: add feature\n\nCo-authored-by: Cursor <noreply@cursor.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: 'remove' as const,
+      };
+
+      const result = await processCommitMessage(message, config);
+
+      // fixup! commits should not be modified
+      expect(result.message).toContain('Co-authored-by: Cursor');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should skip trailer removal for squash! when createCoDevelopedBy is remove', async () => {
+      process.env.CURSOR_TRACE_ID = '1';
+      const message =
+        'squash! feat: add feature\n\nCo-authored-by: Cursor <noreply@cursor.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: 'remove' as const,
+      };
+
+      const result = await processCommitMessage(message, config);
+
+      expect(result.message).toContain('Co-authored-by: Cursor');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not modify message when createCoDevelopedBy is remove and no AI identity', async () => {
+      // No AI env vars set - getCoDevelopedBy() returns ''
+      const message =
+        'feat: add feature\n\nCo-authored-by: Cursor <noreply@cursor.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: 'remove' as const,
+      };
+
+      const result = await processCommitMessage(message, config);
+
+      // No identity to filter, message unchanged
+      expect(result.message).toContain('Co-authored-by: Cursor');
+      expect(result.shouldSave).toBe(false);
+    });
+  });
+
   describe('getGitConfig error handling', () => {
     // We can't easily test getGitConfig directly since it's not exported
     // Instead, we test the behavior when git config commands fail

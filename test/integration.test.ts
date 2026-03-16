@@ -598,6 +598,48 @@ This adds support for the new commitmsg.codevelopedby configuration.`;
     expect(processedMessage).not.toContain('Co-developed-by:');
   });
 
+  it('should remove AI trailers when commit-msg.codevelopedby is remove', () => {
+    const messageFile = path.join(tempDir, 'codevelopedby-remove-message.txt');
+    const commitMessage = `feat: add feature
+
+Co-authored-by: Cursor <noreply@cursor.com>
+Made-with: Cursor
+Co-authored-by: Human <human@example.com>`;
+    writeFileSync(messageFile, commitMessage, 'utf8');
+
+    execSync('git config commit-msg.codevelopedby remove', {
+      stdio: 'ignore',
+    });
+
+    const env = { ...process.env, CURSOR_TRACE_ID: '1' };
+
+    const execResult = spawnSync(
+      'node',
+      [path.join(originalCwd, 'dist/bin/commit-msg.js'), 'exec', messageFile],
+      {
+        cwd: testRepoDir,
+        encoding: 'utf-8',
+        timeout: 30000,
+        env: env,
+      }
+    );
+
+    execSync('git config --unset commit-msg.codevelopedby', {
+      stdio: 'ignore',
+    });
+
+    expect(execResult.status).toBe(0);
+
+    const processedMessage = readFileSync(messageFile, 'utf8');
+
+    expect(processedMessage).not.toContain('Co-authored-by: Cursor');
+    expect(processedMessage).not.toMatch(/Made-with:\s*Cursor/i);
+    expect(processedMessage).toContain(
+      'Co-authored-by: Human <human@example.com>'
+    );
+    expect(processedMessage).not.toContain('Co-developed-by:');
+  });
+
   it('should work with disabled commit-msg.changeid configuration', () => {
     // Create a commit message file
     const messageFile = path.join(

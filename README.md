@@ -99,7 +99,10 @@ The tool follows these Git configuration options:
 
 - `gerrit.createChangeId` - Boolean to control whether to generate Change-Id (default: true)
 - `commit-msg.changeId` - Boolean to control whether to generate Change-Id (alternative to gerrit.createChangeId, default: true)
-- `commit-msg.coDevelopedBy` - Boolean to control whether to add Co-developed-by (default: true)
+- `commit-msg.coDevelopedBy` - Control Co-developed-by behavior (default: true):
+  - `true`: Add Co-developed-by and filter duplicate trailers
+  - `false`: Neither add nor remove
+  - `remove`: Remove matching AI trailers (co-developed-by, co-authored-by, made-with, signed-off-by) without adding; skips fixup!/squash! commits
 - `core.commentChar` - Defines the comment character (defaults to #)
 - `core.hooksPath` - Defines alternative path for hooks
 

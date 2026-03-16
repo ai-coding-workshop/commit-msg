@@ -139,18 +139,39 @@ function stringToBoolean(value: string): boolean {
 }
 
 /**
+ * Co-developed-by configuration mode: true (add), false (skip), or 'remove' (remove only)
+ */
+export type CoDevelopedByMode = boolean | 'remove';
+
+/**
+ * Parse commit-msg.codevelopedby config value.
+ * - 'true', 'yes', 'on', '1' -> true (add Co-developed-by)
+ * - 'remove' -> 'remove' (remove matching trailers only)
+ * - 'false', 'no', etc. -> false (skip)
+ * @param value The config string value
+ * @returns The parsed mode
+ */
+function stringToCoDevelopedByMode(value: string): CoDevelopedByMode {
+  const lowerValue = value.toLowerCase().trim();
+  if (lowerValue === 'remove') {
+    return 'remove';
+  }
+  return stringToBoolean(value);
+}
+
+/**
  * Get Git configuration options
  * @returns Object containing Git configuration options
  */
 function getGitConfig(): {
   createChangeId: boolean;
   commentChar: string;
-  createCoDevelopedBy: boolean;
+  createCoDevelopedBy: CoDevelopedByMode;
 } {
   // Default values
   let createChangeId = true;
   let commentChar = '#';
-  let createCoDevelopedBy = true;
+  let createCoDevelopedBy: CoDevelopedByMode = true;
 
   try {
     // Get all Git config in one call
@@ -182,12 +203,12 @@ function getGitConfig(): {
         else if (key === 'core.commentchar' && value) {
           commentChar = value;
         }
-        // Check for commit-msg.coDevelopedBy (boolean)
+        // Check for commit-msg.coDevelopedBy (true | false | remove)
         else if (
           key === 'commit-msg.codevelopedby' ||
           key === 'commitmsg.codevelopedby'
         ) {
-          createCoDevelopedBy = stringToBoolean(value);
+          createCoDevelopedBy = stringToCoDevelopedByMode(value);
         }
       }
     }
@@ -341,7 +362,7 @@ async function processCommitMessage(
   config: {
     createChangeId: boolean;
     commentChar: string;
-    createCoDevelopedBy: boolean;
+    createCoDevelopedBy: CoDevelopedByMode;
   } = {
     createChangeId: true,
     commentChar: '#',
@@ -368,7 +389,7 @@ async function processCommitMessage(
   if (config.createChangeId) {
     trailers.ChangeId = generateChangeId(cleanedMessage);
   }
-  if (config.createCoDevelopedBy) {
+  if (config.createCoDevelopedBy === true) {
     trailers.CoDevelopedBy = getCoDevelopedBy();
   }
 
@@ -385,27 +406,43 @@ async function processCommitMessage(
     trailers.ChangeId = undefined;
   }
 
-  // Check if we need to insert a CoDevelopedBy
-  if (!needsCoDevelopedBy(cleanedMessage, config.createCoDevelopedBy)) {
-    // Log specific reason for not inserting Co-developed-by
-    if (!config.createCoDevelopedBy) {
-      console.log('Co-developed-by generation disabled by configuration');
-    } else if (isTemporaryCommit(cleanedMessage)) {
-      console.log(
-        'Temporary commit detected, skipping Co-developed-by generation'
-      );
-    } else if (hasCoDevelopedBy(cleanedMessage)) {
-      console.log('Co-developed-by already exists, skipping generation');
+  // Check if we need to insert a CoDevelopedBy (only when createCoDevelopedBy is true)
+  if (config.createCoDevelopedBy === true) {
+    if (!needsCoDevelopedBy(cleanedMessage, true)) {
+      if (isTemporaryCommit(cleanedMessage)) {
+        console.log(
+          'Temporary commit detected, skipping Co-developed-by generation'
+        );
+      } else if (hasCoDevelopedBy(cleanedMessage)) {
+        console.log('Co-developed-by already exists, skipping generation');
+      }
+      trailers.CoDevelopedBy = undefined;
     }
-    trailers.CoDevelopedBy = undefined;
+  } else if (config.createCoDevelopedBy === false) {
+    console.log('Co-developed-by generation disabled by configuration');
   }
 
-  // Do not need to insert anything
-  if (!trailers.CoDevelopedBy && !trailers.ChangeId) {
+  // Remove mode: filter matching trailers without adding Co-developed-by
+  // Skip for fixup!/squash! to avoid modifying temporary commits
+  let filterOnlyIdentity: string | undefined;
+  if (config.createCoDevelopedBy === 'remove') {
+    if (isTemporaryCommit(cleanedMessage)) {
+      console.log(
+        'Temporary commit detected, skipping trailer removal (codevelopedby=remove)'
+      );
+    } else {
+      filterOnlyIdentity = getCoDevelopedBy();
+    }
+  }
+
+  // Do not need to insert or filter anything
+  if (!trailers.CoDevelopedBy && !trailers.ChangeId && !filterOnlyIdentity) {
     return { message: cleanedMessage, shouldSave: cleanShouldSave };
   }
 
-  const messageWithChangeId = insertTrailers(cleanedMessage, trailers);
+  const messageWithChangeId = insertTrailers(cleanedMessage, trailers, {
+    filterOnlyIdentity,
+  });
 
   return { message: messageWithChangeId, shouldSave: true };
 }
@@ -833,11 +870,13 @@ function filterDuplicateTrailers(
  * Insert trailers into the commit message at the correct position
  * @param message The commit message content
  * @param trailers An object containing trailers to insert (supports ChangeId and CoDevelopedBy)
+ * @param options Optional: filterOnlyIdentity for remove-only mode (filter without inserting)
  * @returns The commit message with the inserted trailers
  */
 function insertTrailers(
   message: string,
-  trailers: { ChangeId?: string; CoDevelopedBy?: string }
+  trailers: { ChangeId?: string; CoDevelopedBy?: string },
+  options?: { filterOnlyIdentity?: string }
 ): string {
   const lines = message.split('\n');
   const trailerLines: string[] = [];
@@ -911,12 +950,14 @@ function insertTrailers(
   // If we still have existingTrailers in the array, they are real trailers
   // Need to check each trailer to see if it's a comment or not
   if (existingTrailers.length > 0) {
-    // Filter out duplicate trailers if we're adding a CoDevelopedBy trailer
+    // Filter out duplicate trailers when adding CoDevelopedBy or in remove-only mode
     let filteredTrailers = existingTrailers;
-    if (trailers.CoDevelopedBy) {
+    const filterIdentity =
+      trailers.CoDevelopedBy ?? options?.filterOnlyIdentity;
+    if (filterIdentity) {
       filteredTrailers = filterDuplicateTrailers(
         existingTrailers,
-        trailers.CoDevelopedBy
+        filterIdentity
       );
     }
 
