@@ -5,6 +5,7 @@ const config: AIToolConfig = {
   userName: 'Cursor',
   userEmail: 'noreply@cursor.com',
   envVars: [
+    { key: 'CURSOR_AGENT', value: '1' },
     { key: 'CURSOR_TRACE_ID', value: '*' },
     { key: 'VSCODE_GIT_ASKPASS_MAIN', value: '**/.cursor-server/**' },
     { key: 'BROWSER', value: '**/.cursor-server/**' },
