@@ -800,7 +800,11 @@ function filterDuplicateTrailers(
   }
 
   // Define trailer types to check for duplicates (using lowercase for comparison)
-  const duplicateTrailerPrefixes = ['co-authored-by:', 'signed-off-by:'];
+  const duplicateTrailerPrefixes = [
+    'co-authored-by:',
+    'signed-off-by:',
+    'made-with:',
+  ];
 
   return lines.filter((line) => {
     const lowerLine = line.toLowerCase();

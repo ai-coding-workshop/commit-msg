@@ -44,6 +44,12 @@ describe('remove duplicate trailers functionality', () => {
       const result = extractUsernameFromTrailer(line);
       expect(result).toBeNull();
     });
+
+    it('should extract tool name from made-with trailer without email', () => {
+      const line = 'Made-with: Cursor';
+      const result = extractUsernameFromTrailer(line);
+      expect(result).toBe('Cursor');
+    });
   });
 
   describe('extractUserInfoFromTrailer', () => {
@@ -182,6 +188,18 @@ describe('remove duplicate trailers functionality', () => {
       const result = filterDuplicateTrailers(lines, coDevelopedBy);
       expect(result).toEqual([]);
     });
+
+    it('should filter made-with: Cursor when Co-developed-by username is Cursor', () => {
+      const lines = [
+        'Made-with: Cursor',
+        'Co-authored-by: Cursor <noreply@cursor.com>',
+        'Co-authored-by: John Doe <john@example.com>',
+      ];
+      const coDevelopedBy = 'Cursor <noreply@cursor.com>';
+      const result = filterDuplicateTrailers(lines, coDevelopedBy);
+      // made-with: Cursor and Cursor co-authored-by should be filtered
+      expect(result).toEqual(['Co-authored-by: John Doe <john@example.com>']);
+    });
   });
 
   describe('insertTrailers with duplicate filtering', () => {
@@ -241,6 +259,43 @@ describe('remove duplicate trailers functionality', () => {
       ).length;
       expect(cursorCoAuthoredCount).toBe(0);
       expect(cursorSignedOffCount).toBe(0);
+
+      // Co-developed-by should exist
+      const coDevelopedCount = lines.filter(
+        (line) =>
+          line.startsWith('Co-developed-by:') &&
+          line.includes('Cursor <noreply@cursor.com>')
+      ).length;
+      expect(coDevelopedCount).toBe(1);
+
+      // Human Co-authored-by should be kept
+      const humanCoAuthoredCount = lines.filter(
+        (line) =>
+          line.startsWith('Co-authored-by:') &&
+          line.includes('Human <human@example.com>')
+      ).length;
+      expect(humanCoAuthoredCount).toBe(1);
+    });
+
+    it('should filter made-with: Cursor when embedding Co-developed-by', () => {
+      const message =
+        'feat: add feature\n\nMade-with: Cursor\nCo-authored-by: Cursor <noreply@cursor.com>\nCo-authored-by: Human <human@example.com>';
+      const coDevelopedBy = 'Cursor <noreply@cursor.com>';
+      const result = insertTrailers(message, { CoDevelopedBy: coDevelopedBy });
+      const lines = result.split('\n');
+
+      // made-with: Cursor should be removed
+      const madeWithCount = lines.filter((line) =>
+        line.toLowerCase().startsWith('made-with:')
+      ).length;
+      expect(madeWithCount).toBe(0);
+
+      // Cursor co-authored-by should be removed
+      const cursorCoAuthoredCount = lines.filter(
+        (line) =>
+          line.startsWith('Co-authored-by:') && line.includes('Cursor <')
+      ).length;
+      expect(cursorCoAuthoredCount).toBe(0);
 
       // Co-developed-by should exist
       const coDevelopedCount = lines.filter(
