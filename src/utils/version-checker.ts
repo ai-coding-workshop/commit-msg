@@ -6,17 +6,53 @@ import latestVersion from 'latest-version';
 import semver from 'semver';
 import { execSync, spawn } from 'child_process';
 import { createRequire } from 'module';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { homedir, platform } from 'os';
+import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
+
+/**
+ * Detect if the running package is from a local project's node_modules.
+ * If so, we must update the local project, not the global installation.
+ * Returns { local: true, projectRoot } when running from node_modules of another project.
+ */
+function isRunningFromLocalProject(): { local: boolean; projectRoot?: string } {
+  const currentFile = fileURLToPath(import.meta.url);
+  const distDir = dirname(currentFile);
+  // dist/utils/version-checker.js -> package root is ../../ from dist/
+  const pkgRoot = join(distDir, '..', '..');
+  const pkgRootNormalized = join(pkgRoot, 'package.json');
+
+  if (!existsSync(pkgRootNormalized)) {
+    return { local: false };
+  }
+
+  // Check if we're inside node_modules of a parent project
+  const parts = pkgRoot.split(/[/\\]/);
+  const nodeModulesIdx = parts.findIndex((p) => p === 'node_modules');
+  if (nodeModulesIdx < 0) {
+    // Running from project's own dist/ or from global - not a local dependency
+    return { local: false };
+  }
+
+  // Project root is the directory containing node_modules
+  const projectRoot = join(...parts.slice(0, nodeModulesIdx));
+  const projectPackageJson = join(projectRoot, 'package.json');
+  if (existsSync(projectPackageJson)) {
+    return { local: true, projectRoot };
+  }
+  return { local: false };
+}
 
 interface UpdateInfo {
   current: string;
   latest: string;
   updateCommand: string;
+  /** When updating local project, run npm in this directory */
+  cwd?: string;
 }
 
 interface UpdateCache {
@@ -148,10 +184,12 @@ export async function checkAndUpgrade(
     const hasUpdate = semver.gt(remoteLatest, pkg.version);
 
     if (hasUpdate) {
+      const { command, cwd } = getUpdateCommand();
       const updateInfo: UpdateInfo = {
         current: pkg.version,
         latest: remoteLatest,
-        updateCommand: getUpdateCommand(),
+        updateCommand: command,
+        cwd,
       };
 
       if (verbose) {
@@ -199,23 +237,31 @@ export async function checkAndUpgrade(
 }
 
 /**
- * Get the appropriate update command based on installation method
+ * Get the appropriate update command based on where the package is running from.
+ * Must update the installation that is actually executing, not a different one.
  */
-function getUpdateCommand(): string {
-  try {
-    // Check if installed globally
-    execSync('npm list -g ' + pkg.name, { stdio: 'ignore' });
-    return `npm update -g ${pkg.name} --yes --force`;
-  } catch {
-    // Check if installed locally
+function getUpdateCommand(): { command: string; cwd?: string } {
+  const { local, projectRoot } = isRunningFromLocalProject();
+
+  if (local && projectRoot) {
+    // Running from project's node_modules: update the local project
     try {
-      execSync('npm list ' + pkg.name, { stdio: 'ignore' });
-      return `npm update ${pkg.name} --yes --force`;
+      execSync('npm list ' + pkg.name, {
+        stdio: 'ignore',
+        cwd: projectRoot,
+      });
     } catch {
-      // Fallback to install command
-      return `npm install -g ${pkg.name}@latest --yes --force`;
+      // Package not in package.json, install will add it
     }
+    return {
+      command: `npm install ${pkg.name}@latest --save-dev --yes --force`,
+      cwd: projectRoot,
+    };
   }
+
+  // Running from global or standalone: update global installation
+  // Use npm install -g @latest to force latest (npm update may not update to latest)
+  return { command: `npm install -g ${pkg.name}@latest --yes --force` };
 }
 
 /**
@@ -244,9 +290,10 @@ async function performUpgrade(
       console.log(`🔧 Executing: ${cmd} ${args.join(' ')}`);
     }
 
-    const child = spawn(cmd, args, {
+    const spawnOptions: Parameters<typeof spawn>[2] = {
       stdio: silent ? 'ignore' : 'inherit',
       shell: true,
+      cwd: updateInfo.cwd,
       // Add non-interactive flags to prevent npm from waiting for user input
       env: {
         ...process.env,
@@ -255,7 +302,9 @@ async function performUpgrade(
         // Prevent npm from asking for confirmation
         CI: 'true',
       },
-    });
+    };
+
+    const child = spawn(cmd, args, spawnOptions);
 
     let resolved = false;
 
@@ -377,7 +426,7 @@ export async function checkForUpdatesOnly(
       console.log('\n🔄 New version available!');
       console.log(`Current version: ${pkg.version}`);
       console.log(`Latest version: ${remoteLatest}`);
-      console.log(`Update command: ${getUpdateCommand()}`);
+      console.log(`Update command: ${getUpdateCommand().command}`);
       return true;
     }
 
