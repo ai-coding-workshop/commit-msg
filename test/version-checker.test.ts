@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import {
   checkAndUpgrade,
   checkForUpdatesOnly,
@@ -13,26 +14,20 @@ const packageJson = JSON.parse(
 );
 const currentVersion = packageJson.version;
 
-interface MockNotifier {
-  update?: {
-    current: string;
-    latest: string;
-  };
-}
-
-// Mock update-notifier
-vi.mock('update-notifier', () => ({
-  default: vi.fn(() => ({
-    update: null,
-  })),
+// Mock latest-version (used by both checkForUpdatesOnly and checkAndUpgrade)
+vi.mock('latest-version', () => ({
+  default: vi.fn(() => Promise.resolve(currentVersion)),
 }));
 
 describe('Version Checker', () => {
   const originalEnv = process.env;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    // Reset latest-version mock to return current (no update)
+    const mockLatestVersion = await import('latest-version');
+    vi.mocked(mockLatestVersion.default).mockResolvedValue(currentVersion);
   });
 
   afterEach(() => {
@@ -66,17 +61,8 @@ describe('Version Checker', () => {
     });
 
     it('should return true and display update info when update is available', async () => {
-      const mockUpdateNotifier = await import('update-notifier');
-      const mockNotifier = {
-        update: {
-          current: '0.1.0',
-          latest: '0.2.0',
-        },
-      };
-
-      vi.mocked(mockUpdateNotifier.default).mockReturnValue(
-        mockNotifier as MockNotifier
-      );
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -84,24 +70,17 @@ describe('Version Checker', () => {
 
       expect(hasUpdate).toBe(true);
       expect(consoleSpy).toHaveBeenCalledWith('\n🔄 New version available!');
-      expect(consoleSpy).toHaveBeenCalledWith('Current version: 0.1.0');
-      expect(consoleSpy).toHaveBeenCalledWith('Latest version: 0.2.0');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        `Current version: ${currentVersion}`
+      );
+      expect(consoleSpy).toHaveBeenCalledWith('Latest version: 99.0.0');
 
       consoleSpy.mockRestore();
     });
 
     it('should return true and display verbose update info when update is available', async () => {
-      const mockUpdateNotifier = await import('update-notifier');
-      const mockNotifier = {
-        update: {
-          current: '0.1.0',
-          latest: '0.2.0',
-        },
-      };
-
-      vi.mocked(mockUpdateNotifier.default).mockReturnValue(
-        mockNotifier as MockNotifier
-      );
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -113,20 +92,24 @@ describe('Version Checker', () => {
         `📦 Current local version: ${currentVersion}`
       );
       expect(consoleSpy).toHaveBeenCalledWith('✅ Update found!');
-      expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.0');
-      expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 0.2.0');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        `📦 Local version: ${currentVersion}`
+      );
+      expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 99.0.0');
       expect(consoleSpy).toHaveBeenCalledWith('\n🔄 New version available!');
-      expect(consoleSpy).toHaveBeenCalledWith('Current version: 0.1.0');
-      expect(consoleSpy).toHaveBeenCalledWith('Latest version: 0.2.0');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        `Current version: ${currentVersion}`
+      );
+      expect(consoleSpy).toHaveBeenCalledWith('Latest version: 99.0.0');
 
       consoleSpy.mockRestore();
     });
 
     it('should handle errors gracefully', async () => {
-      const mockUpdateNotifier = await import('update-notifier');
-      vi.mocked(mockUpdateNotifier.default).mockImplementation(() => {
-        throw new Error('Network error');
-      });
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockRejectedValue(
+        new Error('Network error')
+      );
 
       const consoleSpy = vi
         .spyOn(console, 'debug')
@@ -144,10 +127,10 @@ describe('Version Checker', () => {
     });
 
     it('should handle errors gracefully with verbose output', async () => {
-      const mockUpdateNotifier = await import('update-notifier');
-      vi.mocked(mockUpdateNotifier.default).mockImplementation(() => {
-        throw new Error('Network error');
-      });
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockRejectedValue(
+        new Error('Network error')
+      );
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -168,76 +151,65 @@ describe('Version Checker', () => {
     it('should skip check in CI environment', async () => {
       process.env.CI = 'true';
 
-      const mockUpdateNotifier = await import('update-notifier');
-      const mockNotifier = vi.fn();
-      vi.mocked(mockUpdateNotifier.default).mockReturnValue(
-        mockNotifier as MockNotifier
-      );
+      const mockLatestVersion = await import('latest-version');
 
       await checkAndUpgrade();
 
-      expect(mockNotifier).not.toHaveBeenCalled();
+      expect(mockLatestVersion.default).not.toHaveBeenCalled();
     });
 
     it('should skip check in test environment', async () => {
       process.env.NODE_ENV = 'test';
 
-      const mockUpdateNotifier = await import('update-notifier');
-      const mockNotifier = vi.fn();
-      vi.mocked(mockUpdateNotifier.default).mockReturnValue(
-        mockNotifier as MockNotifier
-      );
+      const mockLatestVersion = await import('latest-version');
 
       await checkAndUpgrade();
 
-      expect(mockNotifier).not.toHaveBeenCalled();
+      expect(mockLatestVersion.default).not.toHaveBeenCalled();
     });
 
     it('should handle errors silently', async () => {
-      const mockUpdateNotifier = await import('update-notifier');
-      vi.mocked(mockUpdateNotifier.default).mockImplementation(() => {
-        throw new Error('Network error');
-      });
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockRejectedValue(
+        new Error('Network error')
+      );
 
       // In silent mode, errors are handled silently without console output
-      await expect(checkAndUpgrade({ silent: true })).resolves.not.toThrow();
+      await expect(
+        checkAndUpgrade({ silent: true, verbose: false })
+      ).resolves.not.toThrow();
     });
 
-    it('should show verbose output when verbose option is enabled', async () => {
-      // Temporarily unset NODE_ENV and CI to avoid skipping in test environment
+    it('should show verbose output when update is available', async () => {
       const originalNodeEnv = process.env.NODE_ENV;
       const originalCI = process.env.CI;
       delete process.env.NODE_ENV;
       delete process.env.CI;
 
-      const mockUpdateNotifier = await import('update-notifier');
-      const mockNotifier = {
-        update: {
-          current: '0.1.0',
-          latest: '0.2.0',
-        },
-      };
-
-      vi.mocked(mockUpdateNotifier.default).mockReturnValue(
-        mockNotifier as MockNotifier
-      );
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
-        await checkAndUpgrade({ verbose: true, autoUpgrade: false });
+        await checkAndUpgrade({
+          verbose: true,
+          autoUpgrade: false,
+          checkInterval: 0,
+        });
 
         expect(consoleSpy).toHaveBeenCalledWith('🔍 Checking for updates...');
         expect(consoleSpy).toHaveBeenCalledWith(
           `📦 Current local version: ${currentVersion}`
         );
         expect(consoleSpy).toHaveBeenCalledWith('✅ Update found!');
-        expect(consoleSpy).toHaveBeenCalledWith('📦 Local version: 0.1.0');
-        expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 0.2.0');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `📦 Local version: ${currentVersion}`
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('🌐 Remote version: 99.0.0');
       } finally {
         consoleSpy.mockRestore();
 
-        // Restore original environment variables
         if (originalNodeEnv) {
           process.env.NODE_ENV = originalNodeEnv;
         }
@@ -259,6 +231,186 @@ describe('Version Checker', () => {
       );
 
       consoleSpy.mockRestore();
+    });
+
+    it('should skip network fetch when within check interval (cache hit)', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      const originalXDG = process.env.XDG_CACHE_HOME;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+
+      const tempCacheBase = join(
+        tmpdir(),
+        `commit-msg-test-cache-${Date.now()}`
+      );
+      mkdirSync(tempCacheBase, { recursive: true });
+      writeFileSync(
+        join(tempCacheBase, 'commit-msg-update-cache.json'),
+        JSON.stringify({ lastUpdateCheck: Date.now() })
+      );
+      process.env.XDG_CACHE_HOME = tempCacheBase;
+
+      const mockLatestVersion = await import('latest-version');
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await checkAndUpgrade({
+          verbose: true,
+          autoUpgrade: false,
+          checkInterval: 1000 * 60 * 60 * 8,
+        });
+
+        expect(mockLatestVersion.default).not.toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith(
+          '✅ Skipping check (within interval)'
+        );
+      } finally {
+        consoleSpy.mockRestore();
+        if (originalNodeEnv) process.env.NODE_ENV = originalNodeEnv;
+        if (originalCI) process.env.CI = originalCI;
+        if (originalXDG !== undefined) {
+          process.env.XDG_CACHE_HOME = originalXDG;
+        } else {
+          delete process.env.XDG_CACHE_HOME;
+        }
+      }
+    });
+
+    it('should invoke upgrade flow when autoUpgrade is true and update available', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await checkAndUpgrade({
+          autoUpgrade: true,
+          silent: false,
+          checkInterval: 0,
+        });
+
+        expect(mockLatestVersion.default).toHaveBeenCalled();
+        const logs = consoleSpy.mock.calls.map((c) => c[0]).join(' ');
+        expect(logs).toContain('New version available');
+        expect(logs).toContain('Starting automatic upgrade');
+      } finally {
+        consoleSpy.mockRestore();
+
+        if (originalNodeEnv) {
+          process.env.NODE_ENV = originalNodeEnv;
+        }
+        if (originalCI) {
+          process.env.CI = originalCI;
+        }
+      }
+    });
+
+    it('should show update command without running upgrade when autoUpgrade is false', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await checkAndUpgrade({
+          autoUpgrade: false,
+          silent: false,
+          checkInterval: 0,
+        });
+
+        const logs = consoleSpy.mock.calls.map((c) => c[0]).join(' ');
+        expect(logs).toContain('New version available');
+        expect(logs).toContain('Run the following command to update:');
+        expect(logs).toContain('@ai-coding-workshop/commit-msg');
+        expect(logs).not.toContain('Starting automatic upgrade');
+      } finally {
+        consoleSpy.mockRestore();
+
+        if (originalNodeEnv) process.env.NODE_ENV = originalNodeEnv;
+        if (originalCI) process.env.CI = originalCI;
+      }
+    });
+
+    it('should write cache after fetching latest version', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      const originalXDG = process.env.XDG_CACHE_HOME;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+
+      const tempCacheBase = join(
+        tmpdir(),
+        `commit-msg-cache-write-test-${Date.now()}`
+      );
+      mkdirSync(tempCacheBase, { recursive: true });
+      process.env.XDG_CACHE_HOME = tempCacheBase;
+
+      const cachePath = join(tempCacheBase, 'commit-msg-update-cache.json');
+      expect(() => readFileSync(cachePath)).toThrow();
+
+      try {
+        await checkAndUpgrade({
+          verbose: false,
+          autoUpgrade: false,
+          checkInterval: 0,
+        });
+
+        const cache = JSON.parse(readFileSync(cachePath, 'utf8'));
+        expect(cache).toHaveProperty('lastUpdateCheck');
+        expect(typeof cache.lastUpdateCheck).toBe('number');
+        expect(cache.lastUpdateCheck).toBeLessThanOrEqual(Date.now());
+        expect(cache.lastUpdateCheck).toBeGreaterThan(Date.now() - 5000);
+      } finally {
+        if (originalNodeEnv) process.env.NODE_ENV = originalNodeEnv;
+        if (originalCI) process.env.CI = originalCI;
+        if (originalXDG !== undefined) {
+          process.env.XDG_CACHE_HOME = originalXDG;
+        } else {
+          delete process.env.XDG_CACHE_HOME;
+        }
+      }
+    });
+
+    it('should spawn correct npm update command when performing upgrade', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalCI = process.env.CI;
+      delete process.env.NODE_ENV;
+      delete process.env.CI;
+
+      const mockLatestVersion = await import('latest-version');
+      vi.mocked(mockLatestVersion.default).mockResolvedValue('99.0.0');
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await checkAndUpgrade({
+          autoUpgrade: true,
+          silent: false,
+          verbose: true,
+          checkInterval: 0,
+        });
+
+        const logs = consoleSpy.mock.calls.map((c) => c[0]).join('\n');
+        expect(logs).toMatch(/Update command:.*npm (update|install)/);
+        expect(logs).toContain('@ai-coding-workshop/commit-msg');
+        expect(logs).toMatch(/Executing: npm .*--yes.*--force/);
+      } finally {
+        consoleSpy.mockRestore();
+
+        if (originalNodeEnv) process.env.NODE_ENV = originalNodeEnv;
+        if (originalCI) process.env.CI = originalCI;
+      }
     });
   });
 
@@ -350,6 +502,112 @@ describe('Version Checker', () => {
           process.env.CI = originalCI;
         }
         delete process.env.UPDATE_CHECK_INTERVAL;
+      }
+    });
+
+    it('should invoke version check after install command (auto-upgrade flow)', () => {
+      const tempDir = join(
+        tmpdir(),
+        `commit-msg-auto-upgrade-test-${Date.now()}`
+      );
+      mkdirSync(tempDir, { recursive: true });
+
+      try {
+        execSync('git -c init.defaultBranch=master init', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+        execSync('git config user.name "Test"', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+        execSync('git config user.email "test@test.com"', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+
+        const output = execSync(
+          'node dist/bin/commit-msg.js install --verbose',
+          {
+            cwd: join(__dirname, '..'),
+            encoding: 'utf-8',
+            env: {
+              ...process.env,
+              NODE_ENV: 'production',
+              CI: '',
+              XDG_CACHE_HOME: join(tempDir, 'cache'),
+              UPDATE_CHECK_INTERVAL: '0',
+            },
+          }
+        );
+
+        expect(output).toContain('Commit-msg hook installed successfully!');
+        expect(
+          output.includes('You are using the latest version') ||
+            output.includes('New version available') ||
+            output.includes('Skipping check')
+        ).toBe(true);
+      } finally {
+        if (existsSync(tempDir)) {
+          rmSync(tempDir, { recursive: true, force: true });
+        }
+      }
+    });
+
+    it('should invoke version check after exec command (auto-upgrade flow)', () => {
+      const tempDir = join(
+        tmpdir(),
+        `commit-msg-exec-upgrade-test-${Date.now()}`
+      );
+      mkdirSync(tempDir, { recursive: true });
+
+      try {
+        execSync('git -c init.defaultBranch=master init', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+        execSync('git config user.name "Test"', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+        execSync('git config user.email "test@test.com"', {
+          cwd: tempDir,
+          stdio: 'ignore',
+        });
+        execSync('node dist/bin/commit-msg.js install', {
+          cwd: join(__dirname, '..'),
+          env: { ...process.env, NODE_ENV: 'test' },
+          stdio: 'ignore',
+        });
+
+        const msgFile = join(tempDir, 'msg.txt');
+        writeFileSync(msgFile, 'feat: test\n\nChange-Id: I123\n', 'utf8');
+
+        const output = execSync(
+          'node dist/bin/commit-msg.js exec --verbose ' + msgFile,
+          {
+            cwd: join(__dirname, '..'),
+            encoding: 'utf-8',
+            env: {
+              ...process.env,
+              NODE_ENV: 'production',
+              CI: '',
+              XDG_CACHE_HOME: join(tempDir, 'cache'),
+              UPDATE_CHECK_INTERVAL: '0',
+            },
+          }
+        );
+
+        expect(output).toContain('Commit message processed');
+        expect(
+          output.includes('You are using the latest version') ||
+            output.includes('New version available') ||
+            output.includes('Skipping check')
+        ).toBe(true);
+      } finally {
+        if (existsSync(tempDir)) {
+          rmSync(tempDir, { recursive: true, force: true });
+        }
       }
     });
   });

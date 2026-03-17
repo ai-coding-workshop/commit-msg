@@ -2,9 +2,13 @@
  * Version checker utility with auto-upgrade functionality
  */
 
-import updateNotifier from 'update-notifier';
+import latestVersion from 'latest-version';
+import semver from 'semver';
 import { execSync, spawn } from 'child_process';
 import { createRequire } from 'module';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { homedir, platform } from 'os';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -15,6 +19,42 @@ interface UpdateInfo {
   updateCommand: string;
 }
 
+interface UpdateCache {
+  lastUpdateCheck?: number;
+}
+
+const CACHE_FILE = 'commit-msg-update-cache.json';
+
+function getCachePath(): string {
+  const envOverride = process.env.XDG_CACHE_HOME;
+  if (envOverride) {
+    return join(envOverride, CACHE_FILE);
+  }
+  if (platform() === 'win32') {
+    const base =
+      process.env.LOCALAPPDATA ||
+      join(homedir(), 'AppData', 'Local', 'commit-msg');
+    return join(base, CACHE_FILE);
+  }
+  const base = join(homedir(), '.cache', 'commit-msg');
+  return join(base, CACHE_FILE);
+}
+
+function getUpdateCache(): UpdateCache {
+  try {
+    const data = readFileSync(getCachePath(), 'utf8');
+    return JSON.parse(data) as UpdateCache;
+  } catch {
+    return {};
+  }
+}
+
+function setUpdateCache(cache: UpdateCache): void {
+  const path = getCachePath();
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(cache));
+}
+
 /**
  * Format hours with a maximum of 4 decimal places
  */
@@ -23,7 +63,9 @@ function formatHours(hours: number): string {
 }
 
 /**
- * Check for updates and perform auto-upgrade if available
+ * Check for updates and perform auto-upgrade if available.
+ * Uses latestVersion directly (like checkForUpdatesOnly) for reliable fetch;
+ * update-notifier spawns async and never returns result in the same run.
  * @param options Configuration options
  * @returns Promise that resolves when update check/upgrade is complete
  */
@@ -62,46 +104,53 @@ export async function checkAndUpgrade(
       );
     }
 
-    const notifier = updateNotifier({
-      pkg,
-      updateCheckInterval: checkInterval,
-    });
+    const cache = getUpdateCache();
+    const lastCheck = cache.lastUpdateCheck;
+    const checkIntervalHours = checkInterval / 1000 / 60 / 60;
 
-    // Check if we're using cached data or making a fresh request
-    if (verbose) {
-      const config = (
-        notifier as unknown as { config: { get: (key: string) => unknown } }
-      ).config;
-      const lastCheck = config?.get?.('lastUpdateCheck');
-      const checkIntervalHours = checkInterval / 1000 / 60 / 60;
+    if (verbose && lastCheck && typeof lastCheck === 'number') {
+      const timeSinceLastCheck = Date.now() - lastCheck;
+      const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
 
-      if (lastCheck && typeof lastCheck === 'number') {
-        const timeSinceLastCheck = Date.now() - lastCheck;
-        const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
-
-        if (timeSinceLastCheck < checkInterval) {
-          console.log(
-            `📋 Using cached version data (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
-          );
-        } else {
-          console.log(
-            `🌐 Cache expired, making fresh network request (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
-          );
-        }
+      if (timeSinceLastCheck < checkInterval) {
+        console.log(
+          `📋 Using cached version data (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
+        );
       } else {
         console.log(
-          '🌐 No cache found, making fresh network request (first time check)'
+          `🌐 Cache expired, making fresh network request (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
         );
-        console.log(
-          `ℹ️  Note: update-notifier will cache results for ${checkIntervalHours}h to avoid frequent network requests`
-        );
+      }
+    } else if (verbose && !lastCheck) {
+      console.log(
+        '🌐 No cache found, making fresh network request (first time check)'
+      );
+      console.log(
+        `ℹ️  Note: results will be cached for ${checkIntervalHours}h to avoid frequent network requests`
+      );
+    }
+
+    // Skip network request if within check interval
+    if (lastCheck && typeof lastCheck === 'number') {
+      const timeSinceLastCheck = Date.now() - lastCheck;
+      if (timeSinceLastCheck < checkInterval) {
+        if (verbose) {
+          console.log('✅ Skipping check (within interval)');
+        }
+        return;
       }
     }
 
-    if (notifier.update) {
+    // Fetch directly from npm registry for accurate result
+    const remoteLatest = await latestVersion(pkg.name);
+    setUpdateCache({ lastUpdateCheck: Date.now() });
+
+    const hasUpdate = semver.gt(remoteLatest, pkg.version);
+
+    if (hasUpdate) {
       const updateInfo: UpdateInfo = {
-        current: notifier.update.current,
-        latest: notifier.update.latest,
+        current: pkg.version,
+        latest: remoteLatest,
         updateCommand: getUpdateCommand(),
       };
 
@@ -291,8 +340,9 @@ async function performUpgrade(
 }
 
 /**
- * Check for updates without auto-upgrade (for version command)
- * This version avoids updating the timestamp in update-notifier
+ * Check for updates without auto-upgrade (for check-update command)
+ * Uses latest-version directly for fresh fetch; update-notifier's check() spawns
+ * async and never returns result in the same run.
  */
 export async function checkForUpdatesOnly(
   verbose: boolean = false
@@ -309,57 +359,24 @@ export async function checkForUpdatesOnly(
       console.log(
         `⏰ Check interval: ${formatHours(checkInterval / 1000 / 60 / 60)} hours`
       );
+      console.log('🌐 Fetching latest version from npm registry...');
     }
 
-    // Use a very long interval to avoid updating the timestamp
-    // This effectively prevents update-notifier from updating the last check time
-    const notifier = updateNotifier({
-      pkg,
-      updateCheckInterval: Number.MAX_SAFE_INTEGER,
-    });
+    // Fetch directly from npm registry for accurate result
+    const remoteLatest = await latestVersion(pkg.name);
+    const hasUpdate = semver.gt(remoteLatest, pkg.version);
 
-    // Check if we're using cached data or making a fresh request
-    if (verbose) {
-      const config = (
-        notifier as unknown as { config: { get: (key: string) => unknown } }
-      ).config;
-      const lastCheck = config?.get?.('lastUpdateCheck');
-      const checkIntervalHours = checkInterval / 1000 / 60 / 60;
-
-      if (lastCheck && typeof lastCheck === 'number') {
-        const timeSinceLastCheck = Date.now() - lastCheck;
-        const hoursSinceLastCheck = timeSinceLastCheck / 1000 / 60 / 60;
-
-        if (timeSinceLastCheck < checkInterval) {
-          console.log(
-            `📋 Using cached version data (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
-          );
-        } else {
-          console.log(
-            `🌐 Cache expired, making fresh network request (last checked ${formatHours(hoursSinceLastCheck)}h ago, interval: ${formatHours(checkIntervalHours)}h)`
-          );
-        }
-      } else {
-        console.log(
-          '🌐 No cache found, making fresh network request (first time check)'
-        );
-        console.log(
-          `ℹ️  Note: update-notifier will cache results for ${checkIntervalHours}h to avoid frequent network requests`
-        );
-      }
-    }
-
-    if (notifier.update) {
+    if (hasUpdate) {
       if (verbose) {
         console.log('✅ Update found!');
         console.log(`📦 Package: ${pkg.name}`);
-        console.log(`📦 Local version: ${notifier.update.current}`);
-        console.log(`🌐 Remote version: ${notifier.update.latest}`);
-        console.log(`🌐 Remote package: ${pkg.name}@${notifier.update.latest}`);
+        console.log(`📦 Local version: ${pkg.version}`);
+        console.log(`🌐 Remote version: ${remoteLatest}`);
+        console.log(`🌐 Remote package: ${pkg.name}@${remoteLatest}`);
       }
       console.log('\n🔄 New version available!');
-      console.log(`Current version: ${notifier.update.current}`);
-      console.log(`Latest version: ${notifier.update.latest}`);
+      console.log(`Current version: ${pkg.version}`);
+      console.log(`Latest version: ${remoteLatest}`);
       console.log(`Update command: ${getUpdateCommand()}`);
       return true;
     }
@@ -368,7 +385,7 @@ export async function checkForUpdatesOnly(
       console.log('✅ You are using the latest version');
       console.log(`📦 Package: ${pkg.name}`);
       console.log(`📦 Local version: ${pkg.version}`);
-      console.log(`🌐 Remote package: ${pkg.name}@${pkg.version} (latest)`);
+      console.log(`🌐 Remote package: ${pkg.name}@${remoteLatest} (latest)`);
     }
     return false;
   } catch (error) {
