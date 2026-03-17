@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-02-24
+
+### Added
+
+- Add file-based cache for auto-upgrade version checks
+  - Use XDG_CACHE_HOME on Linux/macOS, LOCALAPPDATA on Windows
+  - Respect check interval (1 hour default) to avoid frequent npm requests
+- Add 6 test cases to protect auto-upgrade flow
+
+### Changed
+
+- Replace update-notifier with direct latestVersion for reliable auto-upgrade
+  - update-notifier spawns async detached process; notifier.update never populated in same run
+  - Use latestVersion() for synchronous fetch within the same process
+- Change default update check interval from 8 hours to 1 hour
+- Use npm install -g @latest instead of npm update -g to force latest version
+  - npm update may report "up to date" without actually upgrading
+
+### Fixed
+
+- Fix auto-upgrade updating wrong installation (global vs local node_modules)
+  - Detect if running from project's node_modules; update the correct installation
+  - Add cwd when spawning local npm install for project updates
+- Fix "version still old" after upgrade when running from local project
+
+### Removed
+
+- Remove update-notifier and @types/update-notifier dependencies
+
 ## [0.2.14] - 2026-03-16
 
 ### Added
