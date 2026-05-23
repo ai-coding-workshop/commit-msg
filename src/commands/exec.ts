@@ -7,6 +7,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { minimatch } from 'minimatch';
 import { fileURLToPath } from 'url';
+import * as yaml from 'js-yaml';
 import { getAllToolConfigs } from '../ai-tools/index.js';
 
 /**
@@ -160,6 +161,62 @@ function stringToCoDevelopedByMode(value: string): CoDevelopedByMode {
 }
 
 /**
+ * YAML configuration file schema
+ */
+interface YamlConfig {
+  add_change_id?: boolean;
+  add_co_developed_by?: boolean;
+}
+
+/**
+ * Load YAML config from workspace root directory.
+ * Checks for `commit-msg.yaml` first, then `.commit-msg.yaml`.
+ * @returns Parsed config object or null if no config file found
+ */
+function loadYamlConfig(): YamlConfig | null {
+  try {
+    const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+      return null;
+    }
+    const rootDir = result.stdout.trim();
+
+    const candidates = ['commit-msg.yaml', '.commit-msg.yaml'];
+    for (const filename of candidates) {
+      const filePath = path.join(rootDir, filename);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const config = yaml.load(content) as YamlConfig;
+        return config ?? {};
+      }
+    }
+  } catch (error) {
+    console.warn(`Warning: Failed to load YAML config: ${error}`);
+  }
+  return null;
+}
+
+/**
+ * Read core.commentChar from git config
+ * @returns The comment character, defaults to '#'
+ */
+function getCommentCharFromGitConfig(): string {
+  try {
+    const result = spawnSync('git', ['config', 'core.commentChar'], {
+      encoding: 'utf8',
+    });
+    if (result.status === 0 && result.stdout.trim()) {
+      return result.stdout.trim();
+    }
+  } catch {
+    // Use default if git config fails
+  }
+  return '#';
+}
+
+/**
  * Get Git configuration options
  * @returns Object containing Git configuration options
  */
@@ -168,7 +225,17 @@ function getGitConfig(): {
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
 } {
-  // Default values
+  // Try YAML config first
+  const yamlConfig = loadYamlConfig();
+  if (yamlConfig !== null) {
+    return {
+      createChangeId: yamlConfig.add_change_id ?? true,
+      commentChar: getCommentCharFromGitConfig(),
+      createCoDevelopedBy: yamlConfig.add_co_developed_by ?? true,
+    };
+  }
+
+  // No YAML config: fall back to git config
   let createChangeId = true;
   let commentChar = '#';
   let createCoDevelopedBy: CoDevelopedByMode = true;
@@ -180,10 +247,8 @@ function getGitConfig(): {
     });
 
     if (configResult.status === 0 && configResult.stdout) {
-      // Parse all config lines
       const configLines = configResult.stdout.trim().split('\n');
 
-      // Process each line to find the configs we need
       for (const line of configLines) {
         const equalIndex = line.indexOf('=');
         if (equalIndex === -1) continue;
@@ -191,20 +256,15 @@ function getGitConfig(): {
         const key = line.substring(0, equalIndex).toLowerCase();
         const value = line.substring(equalIndex + 1);
 
-        // Check for gerrit.createChangeId (boolean)
         if (
           key === 'gerrit.createchangeid' ||
           key === 'commit-msg.changeid' ||
           key === 'commitmsg.changeid'
         ) {
           createChangeId = stringToBoolean(value);
-        }
-        // Check for core.commentChar (string)
-        else if (key === 'core.commentchar' && value) {
+        } else if (key === 'core.commentchar' && value) {
           commentChar = value;
-        }
-        // Check for commit-msg.coDevelopedBy (true | false | remove)
-        else if (
+        } else if (
           key === 'commit-msg.codevelopedby' ||
           key === 'commitmsg.codevelopedby'
         ) {
@@ -213,7 +273,6 @@ function getGitConfig(): {
       }
     }
   } catch (error) {
-    // Use default values if git config commands fail
     console.warn('Warning: Could not read Git configuration, using defaults');
     console.debug('Git config error:', error);
   }
@@ -1024,4 +1083,5 @@ export {
   extractUsernameFromTrailer,
   filterDuplicateTrailers,
   checkAndUpgradeHook,
+  loadYamlConfig,
 };
