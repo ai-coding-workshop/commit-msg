@@ -1,0 +1,4 @@
+add_co_developed_by: true
+add_message_id: false
+add_signed_off_by: true
+strip_noreply_trailers: co-authored-by
