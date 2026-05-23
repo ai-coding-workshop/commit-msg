@@ -16,7 +16,7 @@ import {
   needsCoDevelopedBy,
   clearCoDevelopedByEnvVars,
   loadYamlConfig,
-  getGitConfig,
+  loadConfig,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -1069,10 +1069,7 @@ describe('exec command utilities', () => {
     });
   });
 
-  describe('getGitConfig error handling', () => {
-    // We can't easily test getGitConfig directly since it's not exported
-    // Instead, we test the behavior when git config commands fail
-    // This is covered indirectly by existing tests that use default config values
+  describe('loadGitConfig error handling', () => {
     it('should use default values when git config commands fail', () => {
       // This is indirectly tested by other tests that don't set up git config
       expect(true).toBe(true); // Placeholder test
@@ -1334,7 +1331,7 @@ describe('exec command utilities', () => {
     });
   });
 
-  describe('getGitConfig with YAML config', () => {
+  describe('loadConfig with YAML config', () => {
     let tmpDir: string;
     let originalCwd: string;
 
@@ -1362,7 +1359,7 @@ describe('exec command utilities', () => {
       spawnSync('git', ['config', 'commitmsg.codevelopedby', 'true'], {
         cwd: tmpDir,
       });
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.createChangeId).toBe(false);
       expect(config.createCoDevelopedBy).toBe(false);
     });
@@ -1373,7 +1370,7 @@ describe('exec command utilities', () => {
         'add_change_id: true\n'
       );
       spawnSync('git', ['config', 'core.commentChar', ';'], { cwd: tmpDir });
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.commentChar).toBe(';');
     });
 
@@ -1385,7 +1382,7 @@ describe('exec command utilities', () => {
         cwd: tmpDir,
       });
       spawnSync('git', ['config', 'core.commentChar', ';'], { cwd: tmpDir });
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.createChangeId).toBe(false);
       expect(config.createCoDevelopedBy).toBe(false);
       expect(config.commentChar).toBe(';');
@@ -1396,7 +1393,7 @@ describe('exec command utilities', () => {
         path.join(tmpDir, 'commit-msg.yaml'),
         'add_co_developed_by: false\n'
       );
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.createChangeId).toBe(true);
     });
 
@@ -1405,7 +1402,7 @@ describe('exec command utilities', () => {
         path.join(tmpDir, 'commit-msg.yaml'),
         'add_change_id: false\n'
       );
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.createCoDevelopedBy).toBe(true);
     });
 
@@ -1414,7 +1411,7 @@ describe('exec command utilities', () => {
         path.join(tmpDir, 'commit-msg.yaml'),
         'add_change_id: true\n'
       );
-      const config = getGitConfig();
+      const config = loadConfig();
       expect(config.commentChar).toBe('#');
     });
   });

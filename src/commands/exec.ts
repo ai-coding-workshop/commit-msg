@@ -104,7 +104,7 @@ async function exec(messageFile: string): Promise<void> {
     const messageContent = fs.readFileSync(messageFile, 'utf8');
 
     // Get Git configuration options
-    const config = getGitConfig();
+    const config = loadConfig();
 
     // Process the commit message
     const { message: processedMessage, shouldSave } =
@@ -217,31 +217,19 @@ function getCommentCharFromGitConfig(): string {
 }
 
 /**
- * Get Git configuration options
+ * Load configuration from git config
  * @returns Object containing Git configuration options
  */
-function getGitConfig(): {
+function loadGitConfig(): {
   createChangeId: boolean;
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
 } {
-  // Try YAML config first
-  const yamlConfig = loadYamlConfig();
-  if (yamlConfig !== null) {
-    return {
-      createChangeId: yamlConfig.add_change_id ?? true,
-      commentChar: getCommentCharFromGitConfig(),
-      createCoDevelopedBy: yamlConfig.add_co_developed_by ?? true,
-    };
-  }
-
-  // No YAML config: fall back to git config
   let createChangeId = true;
   let commentChar = '#';
   let createCoDevelopedBy: CoDevelopedByMode = true;
 
   try {
-    // Get all Git config in one call
     const configResult = spawnSync('git', ['config', '--list', '--includes'], {
       encoding: 'utf8',
     });
@@ -282,6 +270,26 @@ function getGitConfig(): {
     commentChar,
     createCoDevelopedBy,
   };
+}
+
+/**
+ * Unified config loader. Tries YAML config first, falls back to git config.
+ * @returns Object containing configuration options
+ */
+function loadConfig(): {
+  createChangeId: boolean;
+  commentChar: string;
+  createCoDevelopedBy: CoDevelopedByMode;
+} {
+  const yamlConfig = loadYamlConfig();
+  if (yamlConfig !== null) {
+    return {
+      createChangeId: yamlConfig.add_change_id ?? true,
+      commentChar: getCommentCharFromGitConfig(),
+      createCoDevelopedBy: yamlConfig.add_co_developed_by ?? true,
+    };
+  }
+  return loadGitConfig();
 }
 
 /**
@@ -1084,5 +1092,6 @@ export {
   filterDuplicateTrailers,
   checkAndUpgradeHook,
   loadYamlConfig,
-  getGitConfig,
+  loadGitConfig,
+  loadConfig,
 };
