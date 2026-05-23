@@ -1084,4 +1084,5 @@ export {
   filterDuplicateTrailers,
   checkAndUpgradeHook,
   loadYamlConfig,
+  getGitConfig,
 };

@@ -1,4 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { spawnSync } from 'child_process';
 import {
   processCommitMessage,
   cleanCommitMessage,
@@ -11,6 +15,8 @@ import {
   hasCoDevelopedBy,
   needsCoDevelopedBy,
   clearCoDevelopedByEnvVars,
+  loadYamlConfig,
+  getGitConfig,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -1233,6 +1239,183 @@ describe('exec command utilities', () => {
     it('should return false when Co-developed-by does not exist', () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
       expect(hasCoDevelopedBy(message)).toBe(false);
+    });
+  });
+
+  describe('loadYamlConfig', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-yaml-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should return null when no config file exists', () => {
+      const result = loadYamlConfig();
+      expect(result).toBeNull();
+    });
+
+    it('should read commit-msg.yaml correctly', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: true\nadd_co_developed_by: false\n'
+      );
+      const result = loadYamlConfig();
+      expect(result).toEqual({
+        add_change_id: true,
+        add_co_developed_by: false,
+      });
+    });
+
+    it('should read .commit-msg.yaml correctly', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, '.commit-msg.yaml'),
+        'add_change_id: false\nadd_co_developed_by: true\n'
+      );
+      const result = loadYamlConfig();
+      expect(result).toEqual({
+        add_change_id: false,
+        add_co_developed_by: true,
+      });
+    });
+
+    it('should prioritize commit-msg.yaml over .commit-msg.yaml', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: true\nadd_co_developed_by: true\n'
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, '.commit-msg.yaml'),
+        'add_change_id: false\nadd_co_developed_by: false\n'
+      );
+      const result = loadYamlConfig();
+      expect(result).toEqual({
+        add_change_id: true,
+        add_co_developed_by: true,
+      });
+    });
+
+    it('should return empty object for empty config file', () => {
+      fs.writeFileSync(path.join(tmpDir, 'commit-msg.yaml'), '');
+      const result = loadYamlConfig();
+      expect(result).toEqual({});
+    });
+
+    it('should return partial config when only add_change_id is set', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: false\n'
+      );
+      const result = loadYamlConfig();
+      expect(result).toEqual({ add_change_id: false });
+      expect(result!.add_co_developed_by).toBeUndefined();
+    });
+
+    it('should return null with warning for invalid YAML', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        '{{{invalid yaml content'
+      );
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = loadYamlConfig();
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Warning: Failed to load YAML config')
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('getGitConfig with YAML config', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-gitcfg-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should use YAML config for createChangeId and createCoDevelopedBy', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: false\nadd_co_developed_by: false\n'
+      );
+      // Set git config to opposite values to verify YAML takes priority
+      spawnSync('git', ['config', 'gerrit.createchangeid', 'true'], {
+        cwd: tmpDir,
+      });
+      spawnSync('git', ['config', 'commitmsg.codevelopedby', 'true'], {
+        cwd: tmpDir,
+      });
+      const config = getGitConfig();
+      expect(config.createChangeId).toBe(false);
+      expect(config.createCoDevelopedBy).toBe(false);
+    });
+
+    it('should read commentChar from git config even when YAML exists', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: true\n'
+      );
+      spawnSync('git', ['config', 'core.commentChar', ';'], { cwd: tmpDir });
+      const config = getGitConfig();
+      expect(config.commentChar).toBe(';');
+    });
+
+    it('should fall back to git config when no YAML exists', () => {
+      spawnSync('git', ['config', 'gerrit.createchangeid', 'false'], {
+        cwd: tmpDir,
+      });
+      spawnSync('git', ['config', 'commitmsg.codevelopedby', 'false'], {
+        cwd: tmpDir,
+      });
+      spawnSync('git', ['config', 'core.commentChar', ';'], { cwd: tmpDir });
+      const config = getGitConfig();
+      expect(config.createChangeId).toBe(false);
+      expect(config.createCoDevelopedBy).toBe(false);
+      expect(config.commentChar).toBe(';');
+    });
+
+    it('should default createChangeId to true when YAML exists but field is omitted', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_co_developed_by: false\n'
+      );
+      const config = getGitConfig();
+      expect(config.createChangeId).toBe(true);
+    });
+
+    it('should default createCoDevelopedBy to true when YAML exists but field is omitted', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: false\n'
+      );
+      const config = getGitConfig();
+      expect(config.createCoDevelopedBy).toBe(true);
+    });
+
+    it('should default commentChar to # when git config is not set', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: true\n'
+      );
+      const config = getGitConfig();
+      expect(config.commentChar).toBe('#');
     });
   });
 });
