@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-23
+
+### Added
+
+- Add YAML config file support (`commit-msg.yaml` / `.commit-msg.yaml`)
+  - Support `add_change_id`, `add_co_developed_by`, `add_signed_off_by`,
+    and `strip_noreply_trailers` settings
+  - YAML config takes priority over git config when present
+- Add `add_signed_off_by` configuration to automatically insert
+  `Signed-off-by` trailer
+  - Reads identity from `git config user.name` and `git config user.email`
+  - Supported in YAML config and git config (`commitmsg.signedoffby`)
+  - Skips duplicate insertion and temporary commits (fixup!/squash!)
+- Add `strip_noreply_trailers` configuration to remove trailers with
+  noreply emails
+  - Comma-separated list of trailer keys to check
+    (e.g., `co-authored-by,signed-off-by`)
+  - Removes matching trailers whose email contains "noreply"
+    (case-insensitive)
+  - Supported in YAML config and git config
+    (`commitmsg.stripnoreplytrailers`)
+
+### Changed
+
+- Refactor config loading into three-layer architecture
+  - Split `getGitConfig()` into `loadGitConfig()` (git-only) and
+    `loadConfig()` (unified: YAML-first, git-fallback)
+  - Add `loadYamlConfig()` for YAML config file parsing
+- Add js-yaml dependency for YAML config file parsing
+
 ## [0.2.15] - 2026-02-24
 
 ### Added
