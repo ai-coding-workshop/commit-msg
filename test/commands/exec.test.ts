@@ -17,6 +17,9 @@ import {
   clearCoDevelopedByEnvVars,
   loadYamlConfig,
   loadConfig,
+  getSignedOffBy,
+  hasSignedOffBy,
+  needsSignedOffBy,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -1413,6 +1416,332 @@ describe('exec command utilities', () => {
       );
       const config = loadConfig();
       expect(config.commentChar).toBe('#');
+    });
+  });
+
+  describe('getSignedOffBy', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+    let originalGitConfigGlobal: string | undefined;
+    let originalGitConfigSystem: string | undefined;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      originalGitConfigGlobal = process.env.GIT_CONFIG_GLOBAL;
+      originalGitConfigSystem = process.env.GIT_CONFIG_SYSTEM;
+      // Isolate from global/system git config
+      process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+      process.env.GIT_CONFIG_SYSTEM = '/dev/null';
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-sob-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      if (originalGitConfigGlobal === undefined) {
+        delete process.env.GIT_CONFIG_GLOBAL;
+      } else {
+        process.env.GIT_CONFIG_GLOBAL = originalGitConfigGlobal;
+      }
+      if (originalGitConfigSystem === undefined) {
+        delete process.env.GIT_CONFIG_SYSTEM;
+      } else {
+        process.env.GIT_CONFIG_SYSTEM = originalGitConfigSystem;
+      }
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should return Name <email> when user.name and user.email are configured', () => {
+      spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: tmpDir });
+      spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+        cwd: tmpDir,
+      });
+      expect(getSignedOffBy()).toBe('Test User <test@example.com>');
+    });
+
+    it('should return empty string when user.name is not set', () => {
+      spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+        cwd: tmpDir,
+      });
+      expect(getSignedOffBy()).toBe('');
+    });
+
+    it('should return empty string when user.email is not set', () => {
+      spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: tmpDir });
+      expect(getSignedOffBy()).toBe('');
+    });
+  });
+
+  describe('hasSignedOffBy', () => {
+    it('should return true when exact Signed-off-by exists', () => {
+      const message =
+        'feat: add feature\n\nSigned-off-by: Test User <test@example.com>';
+      expect(hasSignedOffBy(message, 'Test User <test@example.com>')).toBe(
+        true
+      );
+    });
+
+    it('should return false when not present', () => {
+      const message = 'feat: add feature\n\nThis is a new feature';
+      expect(hasSignedOffBy(message, 'Test User <test@example.com>')).toBe(
+        false
+      );
+    });
+
+    it('should return false when different identity', () => {
+      const message =
+        'feat: add feature\n\nSigned-off-by: Other User <other@example.com>';
+      expect(hasSignedOffBy(message, 'Test User <test@example.com>')).toBe(
+        false
+      );
+    });
+
+    it('should match case-insensitively on the key', () => {
+      const message =
+        'feat: add feature\n\nsigned-off-by: Test User <test@example.com>';
+      expect(hasSignedOffBy(message, 'Test User <test@example.com>')).toBe(
+        true
+      );
+    });
+  });
+
+  describe('needsSignedOffBy', () => {
+    it('should return false when disabled (createSignedOffBy=false)', () => {
+      const message = 'feat: add feature\n\nThis is a new feature';
+      expect(
+        needsSignedOffBy(message, false, 'Test User <test@example.com>')
+      ).toBe(false);
+    });
+
+    it('should return false when identity is empty', () => {
+      const message = 'feat: add feature\n\nThis is a new feature';
+      expect(needsSignedOffBy(message, true, '')).toBe(false);
+    });
+
+    it('should return false for temporary commits (fixup!)', () => {
+      const message = 'fixup! feat: add feature\n\nThis is a fixup';
+      expect(
+        needsSignedOffBy(message, true, 'Test User <test@example.com>')
+      ).toBe(false);
+    });
+
+    it('should return false for temporary commits (squash!)', () => {
+      const message = 'squash! feat: add feature\n\nThis is a squash';
+      expect(
+        needsSignedOffBy(message, true, 'Test User <test@example.com>')
+      ).toBe(false);
+    });
+
+    it('should return false when already exists', () => {
+      const message =
+        'feat: add feature\n\nSigned-off-by: Test User <test@example.com>';
+      expect(
+        needsSignedOffBy(message, true, 'Test User <test@example.com>')
+      ).toBe(false);
+    });
+
+    it('should return true in normal case', () => {
+      const message = 'feat: add feature\n\nThis is a new feature';
+      expect(
+        needsSignedOffBy(message, true, 'Test User <test@example.com>')
+      ).toBe(true);
+    });
+  });
+
+  describe('processCommitMessage with Signed-off-by', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-sob-proc-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: tmpDir });
+      spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+        cwd: tmpDir,
+      });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should add Signed-off-by when createSignedOffBy is true', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+        createSignedOffBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toContain(
+        'Signed-off-by: Test User <test@example.com>'
+      );
+      expect(result.shouldSave).toBe(true);
+    });
+
+    it('should not add Signed-off-by when createSignedOffBy is false (default)', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('Signed-off-by:');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should not duplicate existing Signed-off-by', async () => {
+      const message =
+        'feat: add new feature\n\nSigned-off-by: Test User <test@example.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+        createSignedOffBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      // Count occurrences of Signed-off-by
+      const matches = result.message.match(/Signed-off-by:/g);
+      expect(matches).toHaveLength(1);
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should maintain correct ordering: Change-Id before Co-developed-by before Signed-off-by', async () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const originalEnv = process.env;
+      process.env = { ...originalEnv };
+      process.env.CLAUDECODE = '1';
+
+      const config = {
+        createChangeId: true,
+        commentChar: '#',
+        createCoDevelopedBy: true as const,
+        createSignedOffBy: true,
+      };
+      const result = await processCommitMessage(message, config);
+      const lines = result.message.split('\n');
+
+      const changeIdIndex = lines.findIndex((line) =>
+        line.startsWith('Change-Id:')
+      );
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+      const signedOffIndex = lines.findIndex((line) =>
+        line.startsWith('Signed-off-by:')
+      );
+
+      expect(changeIdIndex).toBeGreaterThan(-1);
+      expect(coDevelopedIndex).toBeGreaterThan(-1);
+      expect(signedOffIndex).toBeGreaterThan(-1);
+      expect(changeIdIndex).toBeLessThan(coDevelopedIndex);
+      expect(coDevelopedIndex).toBeLessThan(signedOffIndex);
+      expect(result.shouldSave).toBe(true);
+
+      process.env = originalEnv;
+    });
+  });
+
+  describe('loadConfig with Signed-off-by', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-sob-cfg-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should map YAML add_signed_off_by: true to createSignedOffBy: true', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_signed_off_by: true\n'
+      );
+      const config = loadConfig();
+      expect(config.createSignedOffBy).toBe(true);
+    });
+
+    it('should default createSignedOffBy to false when YAML has no add_signed_off_by', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'add_change_id: true\n'
+      );
+      const config = loadConfig();
+      expect(config.createSignedOffBy).toBe(false);
+    });
+
+    it('should map git config commitmsg.signedoffby=true to createSignedOffBy: true', () => {
+      spawnSync('git', ['config', 'commitmsg.signedoffby', 'true'], {
+        cwd: tmpDir,
+      });
+      const config = loadConfig();
+      expect(config.createSignedOffBy).toBe(true);
+    });
+
+    it('should default createSignedOffBy to false when git config is not set', () => {
+      const config = loadConfig();
+      expect(config.createSignedOffBy).toBe(false);
+    });
+  });
+
+  describe('insertTrailers with Signed-off-by', () => {
+    it('should insert Signed-off-by when SignedOffBy is provided', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const result = insertTrailers(message, {
+        SignedOffBy: 'Test User <test@example.com>',
+      });
+      const lines = result.split('\n');
+      expect(lines[lines.length - 2]).toBe('');
+      expect(lines[lines.length - 1]).toBe(
+        'Signed-off-by: Test User <test@example.com>'
+      );
+    });
+
+    it('should not insert Signed-off-by when SignedOffBy is empty string', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const result = insertTrailers(message, { SignedOffBy: '' });
+      expect(result).not.toContain('Signed-off-by:');
+    });
+
+    it('should insert all three trailers in correct order: Change-Id, Co-developed-by, Signed-off-by', () => {
+      const message = 'feat: add new feature\n\nThis is a new feature';
+      const changeId = 'I123456789abcdef0123456789abcdef01234567';
+      const coDevelopedBy = 'Claude <noreply@anthropic.com>';
+      const signedOffBy = 'Test User <test@example.com>';
+      const result = insertTrailers(message, {
+        ChangeId: changeId,
+        CoDevelopedBy: coDevelopedBy,
+        SignedOffBy: signedOffBy,
+      });
+      const lines = result.split('\n');
+
+      const changeIdIndex = lines.findIndex((line) =>
+        line.startsWith('Change-Id:')
+      );
+      const coDevelopedIndex = lines.findIndex((line) =>
+        line.startsWith('Co-developed-by:')
+      );
+      const signedOffIndex = lines.findIndex((line) =>
+        line.startsWith('Signed-off-by:')
+      );
+
+      expect(changeIdIndex).toBeGreaterThan(-1);
+      expect(coDevelopedIndex).toBeGreaterThan(-1);
+      expect(signedOffIndex).toBeGreaterThan(-1);
+      expect(changeIdIndex).toBeLessThan(coDevelopedIndex);
+      expect(coDevelopedIndex).toBeLessThan(signedOffIndex);
     });
   });
 });
