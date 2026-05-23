@@ -1,0 +1,5 @@
+# commit-msg hook configuration
+add_change_id: false
+add_co_developed_by: true
+add_signed_off_by: true
+strip_noreply_trailers: "co-authored-by"
