@@ -167,6 +167,7 @@ interface YamlConfig {
   add_change_id?: boolean;
   add_co_developed_by?: boolean;
   add_signed_off_by?: boolean;
+  strip_noreply_trailers?: string;
 }
 
 /**
@@ -221,16 +222,28 @@ function getCommentCharFromGitConfig(): string {
  * Load configuration from git config
  * @returns Object containing Git configuration options
  */
+/**
+ * Parse a comma-separated string into a trimmed lowercase array
+ */
+function parseCommaSeparatedKeys(value: string): string[] {
+  return value
+    .split(',')
+    .map((k) => k.trim().toLowerCase())
+    .filter((k) => k.length > 0);
+}
+
 function loadGitConfig(): {
   createChangeId: boolean;
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
   createSignedOffBy: boolean;
+  stripNoreplyTrailers: string[];
 } {
   let createChangeId = true;
   let commentChar = '#';
   let createCoDevelopedBy: CoDevelopedByMode = true;
   let createSignedOffBy = false;
+  let stripNoreplyTrailers: string[] = [];
 
   try {
     const configResult = spawnSync('git', ['config', '--list', '--includes'], {
@@ -265,6 +278,11 @@ function loadGitConfig(): {
           key === 'commitmsg.signedoffby'
         ) {
           createSignedOffBy = stringToBoolean(value);
+        } else if (
+          key === 'commit-msg.stripnoreplytrailers' ||
+          key === 'commitmsg.stripnoreplytrailers'
+        ) {
+          stripNoreplyTrailers = parseCommaSeparatedKeys(value);
         }
       }
     }
@@ -278,6 +296,7 @@ function loadGitConfig(): {
     commentChar,
     createCoDevelopedBy,
     createSignedOffBy,
+    stripNoreplyTrailers,
   };
 }
 
@@ -290,6 +309,7 @@ function loadConfig(): {
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
   createSignedOffBy: boolean;
+  stripNoreplyTrailers: string[];
 } {
   const yamlConfig = loadYamlConfig();
   if (yamlConfig !== null) {
@@ -298,6 +318,9 @@ function loadConfig(): {
       commentChar: getCommentCharFromGitConfig(),
       createCoDevelopedBy: yamlConfig.add_co_developed_by ?? true,
       createSignedOffBy: yamlConfig.add_signed_off_by ?? false,
+      stripNoreplyTrailers: yamlConfig.strip_noreply_trailers
+        ? parseCommaSeparatedKeys(yamlConfig.strip_noreply_trailers)
+        : [],
     };
   }
   return loadGitConfig();
@@ -442,11 +465,13 @@ async function processCommitMessage(
     commentChar: string;
     createCoDevelopedBy: CoDevelopedByMode;
     createSignedOffBy?: boolean;
+    stripNoreplyTrailers?: string[];
   } = {
     createChangeId: true,
     commentChar: '#',
     createCoDevelopedBy: true,
     createSignedOffBy: false,
+    stripNoreplyTrailers: [],
   }
 ): Promise<{ message: string; shouldSave: boolean }> {
   // User does not save the commit message, let Git to abort the commit
@@ -537,18 +562,26 @@ async function processCommitMessage(
     }
   }
 
+  // Determine noreply stripping keys (skip for temporary commits)
+  const stripNoreplyTrailers =
+    !isTemporaryCommit(cleanedMessage) && config.stripNoreplyTrailers?.length
+      ? config.stripNoreplyTrailers
+      : undefined;
+
   // Do not need to insert or filter anything
   if (
     !trailers.CoDevelopedBy &&
     !trailers.ChangeId &&
     !trailers.SignedOffBy &&
-    !filterOnlyIdentity
+    !filterOnlyIdentity &&
+    !stripNoreplyTrailers
   ) {
     return { message: cleanedMessage, shouldSave: cleanShouldSave };
   }
 
   const messageWithTrailers = insertTrailers(cleanedMessage, trailers, {
     filterOnlyIdentity,
+    stripNoreplyTrailers,
   });
 
   return { message: messageWithTrailers, shouldSave: true };
@@ -1037,6 +1070,34 @@ function filterDuplicateTrailers(
 }
 
 /**
+ * Filter out trailers whose email contains "noreply" for specified trailer keys
+ * @param lines The existing trailer lines
+ * @param keysToStrip Lowercase trailer keys to check (e.g., ["co-authored-by"])
+ * @returns Filtered trailer lines
+ */
+function filterNoreplyTrailers(
+  lines: string[],
+  keysToStrip: string[]
+): string[] {
+  if (keysToStrip.length === 0) {
+    return lines;
+  }
+
+  return lines.filter((line) => {
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) return true;
+
+    const key = line.substring(0, colonIndex).toLowerCase();
+    if (!keysToStrip.includes(key)) return true;
+
+    const emailMatch = line.match(/<([^>]+)>/);
+    if (!emailMatch) return true;
+
+    return !emailMatch[1].toLowerCase().includes('noreply');
+  });
+}
+
+/**
  * Insert trailers into the commit message at the correct position
  * @param message The commit message content
  * @param trailers An object containing trailers to insert (supports ChangeId and CoDevelopedBy)
@@ -1050,7 +1111,7 @@ function insertTrailers(
     CoDevelopedBy?: string;
     SignedOffBy?: string;
   },
-  options?: { filterOnlyIdentity?: string }
+  options?: { filterOnlyIdentity?: string; stripNoreplyTrailers?: string[] }
 ): string {
   const lines = message.split('\n');
   const trailerLines: string[] = [];
@@ -1138,6 +1199,14 @@ function insertTrailers(
       );
     }
 
+    // Filter out noreply trailers
+    if (options?.stripNoreplyTrailers?.length) {
+      filteredTrailers = filterNoreplyTrailers(
+        filteredTrailers,
+        options.stripNoreplyTrailers
+      );
+    }
+
     // Find the first non-comment trailer
     let firstNonCommentIndex = -1;
     for (let i = 0; i < filteredTrailers.length; i++) {
@@ -1207,4 +1276,6 @@ export {
   getSignedOffBy,
   hasSignedOffBy,
   needsSignedOffBy,
+  filterNoreplyTrailers,
+  parseCommaSeparatedKeys,
 };
