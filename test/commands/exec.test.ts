@@ -20,6 +20,8 @@ import {
   getSignedOffBy,
   hasSignedOffBy,
   needsSignedOffBy,
+  filterNoreplyTrailers,
+  parseCommaSeparatedKeys,
 } from '../../src/commands/exec';
 
 describe('exec command utilities', () => {
@@ -1696,6 +1698,127 @@ describe('exec command utilities', () => {
     });
   });
 
+  describe('parseCommaSeparatedKeys', () => {
+    it('should parse comma-separated string into lowercase trimmed array', () => {
+      expect(parseCommaSeparatedKeys('co-authored-by,signed-off-by')).toEqual([
+        'co-authored-by',
+        'signed-off-by',
+      ]);
+    });
+
+    it('should trim whitespace from keys', () => {
+      expect(
+        parseCommaSeparatedKeys(' co-authored-by , signed-off-by ')
+      ).toEqual(['co-authored-by', 'signed-off-by']);
+    });
+
+    it('should convert keys to lowercase', () => {
+      expect(parseCommaSeparatedKeys('Co-Authored-By,SIGNED-OFF-BY')).toEqual([
+        'co-authored-by',
+        'signed-off-by',
+      ]);
+    });
+
+    it('should filter out empty strings', () => {
+      expect(parseCommaSeparatedKeys('co-authored-by,,signed-off-by,')).toEqual(
+        ['co-authored-by', 'signed-off-by']
+      );
+    });
+
+    it('should return empty array for empty string', () => {
+      expect(parseCommaSeparatedKeys('')).toEqual([]);
+    });
+  });
+
+  describe('filterNoreplyTrailers', () => {
+    it('should return all lines unchanged when keysToStrip is empty', () => {
+      const lines = [
+        'Co-authored-by: Bot <bot@noreply.github.com>',
+        'Signed-off-by: Alice <alice@example.com>',
+      ];
+      expect(filterNoreplyTrailers(lines, [])).toEqual(lines);
+    });
+
+    it('should remove co-authored-by with noreply email', () => {
+      const lines = [
+        'Co-authored-by: Bot <bot@noreply.github.com>',
+        'Co-authored-by: Alice <alice@example.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual(['Co-authored-by: Alice <alice@example.com>']);
+    });
+
+    it('should keep co-authored-by with normal email', () => {
+      const lines = ['Co-authored-by: Alice <alice@example.com>'];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual(lines);
+    });
+
+    it('should match trailer key case-insensitively', () => {
+      const lines = [
+        'CO-AUTHORED-BY: Bot <bot@noreply.github.com>',
+        'co-authored-by: Bot2 <bot2@noreply.github.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual([]);
+    });
+
+    it('should match noreply case-insensitively', () => {
+      const lines = [
+        'Co-authored-by: Bot1 <bot1@NoReply.github.com>',
+        'Co-authored-by: Bot2 <bot2@NOREPLY.github.com>',
+        'Co-authored-by: Bot3 <bot3@noreply.github.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual([]);
+    });
+
+    it('should filter multiple keys simultaneously', () => {
+      const lines = [
+        'Co-authored-by: Bot <bot@noreply.github.com>',
+        'Signed-off-by: CI <noreply@ci.com>',
+        'Co-authored-by: Alice <alice@example.com>',
+        'Signed-off-by: Bob <bob@example.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, [
+        'co-authored-by',
+        'signed-off-by',
+      ]);
+      expect(result).toEqual([
+        'Co-authored-by: Alice <alice@example.com>',
+        'Signed-off-by: Bob <bob@example.com>',
+      ]);
+    });
+
+    it('should keep trailers not in keysToStrip list', () => {
+      const lines = [
+        'Co-authored-by: Bot <bot@noreply.github.com>',
+        'Change-Id: I123abc',
+        'Reviewed-by: Reviewer <reviewer@noreply.github.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual([
+        'Change-Id: I123abc',
+        'Reviewed-by: Reviewer <reviewer@noreply.github.com>',
+      ]);
+    });
+
+    it('should keep lines without a colon', () => {
+      const lines = [
+        'no-colon-line',
+        'Co-authored-by: Bot <bot@noreply.github.com>',
+      ];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual(['no-colon-line']);
+    });
+
+    it('should keep trailers without email angle brackets', () => {
+      const lines = ['Co-authored-by: just-a-name'];
+      const result = filterNoreplyTrailers(lines, ['co-authored-by']);
+      expect(result).toEqual(['Co-authored-by: just-a-name']);
+    });
+  });
+
   describe('insertTrailers with Signed-off-by', () => {
     it('should insert Signed-off-by when SignedOffBy is provided', () => {
       const message = 'feat: add new feature\n\nThis is a new feature';
@@ -1742,6 +1865,126 @@ describe('exec command utilities', () => {
       expect(signedOffIndex).toBeGreaterThan(-1);
       expect(changeIdIndex).toBeLessThan(coDevelopedIndex);
       expect(coDevelopedIndex).toBeLessThan(signedOffIndex);
+    });
+  });
+
+  describe('insertTrailers with stripNoreplyTrailers', () => {
+    it('should strip noreply trailers from existing trailer section', () => {
+      const message =
+        'feat: add feature\n\nCo-authored-by: Bot <bot@noreply.github.com>\nCo-authored-by: Alice <alice@example.com>';
+      const result = insertTrailers(
+        message,
+        {},
+        {
+          stripNoreplyTrailers: ['co-authored-by'],
+        }
+      );
+      expect(result).not.toContain('bot@noreply.github.com');
+      expect(result).toContain('Co-authored-by: Alice <alice@example.com>');
+    });
+
+    it('should not strip when stripNoreplyTrailers is empty', () => {
+      const message =
+        'feat: add feature\n\nCo-authored-by: Bot <bot@noreply.github.com>';
+      const result = insertTrailers(
+        message,
+        {},
+        {
+          stripNoreplyTrailers: [],
+        }
+      );
+      expect(result).toContain('bot@noreply.github.com');
+    });
+  });
+
+  describe('processCommitMessage with stripNoreplyTrailers', () => {
+    it('should not filter when stripNoreplyTrailers is empty', async () => {
+      const message =
+        'feat: add feature\n\nCo-authored-by: Bot <bot@noreply.github.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+        stripNoreplyTrailers: [],
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toContain('bot@noreply.github.com');
+      expect(result.shouldSave).toBe(false);
+    });
+
+    it('should remove noreply trailers when config is set', async () => {
+      const message =
+        'feat: add feature\n\nCo-authored-by: Bot <bot@noreply.github.com>\nCo-authored-by: Alice <alice@example.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+        stripNoreplyTrailers: ['co-authored-by'],
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).not.toContain('bot@noreply.github.com');
+      expect(result.message).toContain(
+        'Co-authored-by: Alice <alice@example.com>'
+      );
+      expect(result.shouldSave).toBe(true);
+    });
+
+    it('should skip filtering for temporary commits', async () => {
+      const message =
+        'fixup! feat: add feature\n\nCo-authored-by: Bot <bot@noreply.github.com>';
+      const config = {
+        createChangeId: false,
+        commentChar: '#',
+        createCoDevelopedBy: false as const,
+        stripNoreplyTrailers: ['co-authored-by'],
+      };
+      const result = await processCommitMessage(message, config);
+      expect(result.message).toContain('bot@noreply.github.com');
+      expect(result.shouldSave).toBe(false);
+    });
+  });
+
+  describe('loadConfig with strip_noreply_trailers', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-msg-noreply-'));
+      spawnSync('git', ['init'], { cwd: tmpDir });
+      process.chdir(tmpDir);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should parse YAML strip_noreply_trailers into array', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'commit-msg.yaml'),
+        'strip_noreply_trailers: "co-authored-by,signed-off-by"\n'
+      );
+      const config = loadConfig();
+      expect(config.stripNoreplyTrailers).toEqual([
+        'co-authored-by',
+        'signed-off-by',
+      ]);
+    });
+
+    it('should parse git config stripnoreplytrailers', () => {
+      spawnSync(
+        'git',
+        ['config', 'commitmsg.stripnoreplytrailers', 'co-authored-by'],
+        { cwd: tmpDir }
+      );
+      const config = loadConfig();
+      expect(config.stripNoreplyTrailers).toEqual(['co-authored-by']);
+    });
+
+    it('should default to empty array when not configured', () => {
+      const config = loadConfig();
+      expect(config.stripNoreplyTrailers).toEqual([]);
     });
   });
 });
