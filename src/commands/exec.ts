@@ -166,6 +166,7 @@ function stringToCoDevelopedByMode(value: string): CoDevelopedByMode {
 interface YamlConfig {
   add_change_id?: boolean;
   add_co_developed_by?: boolean;
+  add_signed_off_by?: boolean;
 }
 
 /**
@@ -224,10 +225,12 @@ function loadGitConfig(): {
   createChangeId: boolean;
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
+  createSignedOffBy: boolean;
 } {
   let createChangeId = true;
   let commentChar = '#';
   let createCoDevelopedBy: CoDevelopedByMode = true;
+  let createSignedOffBy = false;
 
   try {
     const configResult = spawnSync('git', ['config', '--list', '--includes'], {
@@ -257,6 +260,11 @@ function loadGitConfig(): {
           key === 'commitmsg.codevelopedby'
         ) {
           createCoDevelopedBy = stringToCoDevelopedByMode(value);
+        } else if (
+          key === 'commit-msg.signedoffby' ||
+          key === 'commitmsg.signedoffby'
+        ) {
+          createSignedOffBy = stringToBoolean(value);
         }
       }
     }
@@ -269,6 +277,7 @@ function loadGitConfig(): {
     createChangeId,
     commentChar,
     createCoDevelopedBy,
+    createSignedOffBy,
   };
 }
 
@@ -280,6 +289,7 @@ function loadConfig(): {
   createChangeId: boolean;
   commentChar: string;
   createCoDevelopedBy: CoDevelopedByMode;
+  createSignedOffBy: boolean;
 } {
   const yamlConfig = loadYamlConfig();
   if (yamlConfig !== null) {
@@ -287,6 +297,7 @@ function loadConfig(): {
       createChangeId: yamlConfig.add_change_id ?? true,
       commentChar: getCommentCharFromGitConfig(),
       createCoDevelopedBy: yamlConfig.add_co_developed_by ?? true,
+      createSignedOffBy: yamlConfig.add_signed_off_by ?? false,
     };
   }
   return loadGitConfig();
@@ -430,10 +441,12 @@ async function processCommitMessage(
     createChangeId: boolean;
     commentChar: string;
     createCoDevelopedBy: CoDevelopedByMode;
+    createSignedOffBy?: boolean;
   } = {
     createChangeId: true,
     commentChar: '#',
     createCoDevelopedBy: true,
+    createSignedOffBy: false,
   }
 ): Promise<{ message: string; shouldSave: boolean }> {
   // User does not save the commit message, let Git to abort the commit
@@ -452,7 +465,11 @@ async function processCommitMessage(
   }
 
   // Generate and insert Change-Id and CoDevelopedBy if configured
-  const trailers: { ChangeId?: string; CoDevelopedBy?: string } = {};
+  const trailers: {
+    ChangeId?: string;
+    CoDevelopedBy?: string;
+    SignedOffBy?: string;
+  } = {};
   if (config.createChangeId) {
     trailers.ChangeId = generateChangeId(cleanedMessage);
   }
@@ -489,6 +506,24 @@ async function processCommitMessage(
     console.log('Co-developed-by generation disabled by configuration');
   }
 
+  // Check if we need to insert a Signed-off-by
+  if (config.createSignedOffBy) {
+    const signedOffByIdentity = getSignedOffBy();
+    if (needsSignedOffBy(cleanedMessage, true, signedOffByIdentity)) {
+      trailers.SignedOffBy = signedOffByIdentity;
+    } else if (!signedOffByIdentity) {
+      console.log(
+        'Signed-off-by skipped: git user.name or user.email not configured'
+      );
+    } else if (isTemporaryCommit(cleanedMessage)) {
+      console.log(
+        'Temporary commit detected, skipping Signed-off-by generation'
+      );
+    } else if (hasSignedOffBy(cleanedMessage, signedOffByIdentity)) {
+      console.log('Signed-off-by already exists, skipping generation');
+    }
+  }
+
   // Remove mode: filter matching trailers without adding Co-developed-by
   // Skip for fixup!/squash! to avoid modifying temporary commits
   let filterOnlyIdentity: string | undefined;
@@ -503,15 +538,20 @@ async function processCommitMessage(
   }
 
   // Do not need to insert or filter anything
-  if (!trailers.CoDevelopedBy && !trailers.ChangeId && !filterOnlyIdentity) {
+  if (
+    !trailers.CoDevelopedBy &&
+    !trailers.ChangeId &&
+    !trailers.SignedOffBy &&
+    !filterOnlyIdentity
+  ) {
     return { message: cleanedMessage, shouldSave: cleanShouldSave };
   }
 
-  const messageWithChangeId = insertTrailers(cleanedMessage, trailers, {
+  const messageWithTrailers = insertTrailers(cleanedMessage, trailers, {
     filterOnlyIdentity,
   });
 
-  return { message: messageWithChangeId, shouldSave: true };
+  return { message: messageWithTrailers, shouldSave: true };
 }
 
 /**
@@ -708,6 +748,69 @@ function needsCoDevelopedBy(
   }
 
   // Otherwise, we need to insert a Co-developed-by
+  return true;
+}
+
+/**
+ * Get the Signed-off-by identity from git config user.name and user.email
+ * @returns Formatted "Name <email>" string or empty string if not configured
+ */
+function getSignedOffBy(): string {
+  try {
+    const nameResult = spawnSync('git', ['config', 'user.name'], {
+      encoding: 'utf8',
+    });
+    const emailResult = spawnSync('git', ['config', 'user.email'], {
+      encoding: 'utf8',
+    });
+    const name = nameResult.status === 0 ? nameResult.stdout.trim() : '';
+    const email = emailResult.status === 0 ? emailResult.stdout.trim() : '';
+    if (name && email) {
+      return `${name} <${email}>`;
+    }
+  } catch {
+    // Fall through to return empty string
+  }
+  return '';
+}
+
+/**
+ * Check if the commit message already has a matching Signed-off-by
+ * @param message The commit message content
+ * @param identity The identity to check for (e.g., "Name <email>")
+ * @returns True if matching Signed-off-by exists
+ */
+function hasSignedOffBy(message: string, identity: string): boolean {
+  const target = `signed-off-by: ${identity}`.toLowerCase();
+  for (const line of message.split('\n')) {
+    if (line.toLowerCase().trimEnd() === target) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if the commit message needs a Signed-off-by to be inserted
+ * @param message The commit message content
+ * @param createSignedOffBy Configuration flag
+ * @param identity The Signed-off-by identity string
+ * @returns True if Signed-off-by should be inserted
+ */
+function needsSignedOffBy(
+  message: string,
+  createSignedOffBy: boolean,
+  identity: string
+): boolean {
+  if (!createSignedOffBy || !identity) {
+    return false;
+  }
+  if (hasSignedOffBy(message, identity)) {
+    return false;
+  }
+  if (isTemporaryCommit(message)) {
+    return false;
+  }
   return true;
 }
 
@@ -942,19 +1045,26 @@ function filterDuplicateTrailers(
  */
 function insertTrailers(
   message: string,
-  trailers: { ChangeId?: string; CoDevelopedBy?: string },
+  trailers: {
+    ChangeId?: string;
+    CoDevelopedBy?: string;
+    SignedOffBy?: string;
+  },
   options?: { filterOnlyIdentity?: string }
 ): string {
   const lines = message.split('\n');
   const trailerLines: string[] = [];
 
   // Convert trailer object to lines
-  // When both ChangeId and CoDevelopedBy exist, ChangeId should come first
+  // Order: Change-Id → Co-developed-by → Signed-off-by
   if (trailers.ChangeId) {
     trailerLines.push(`Change-Id: ${trailers.ChangeId}`);
   }
   if (trailers.CoDevelopedBy) {
     trailerLines.push(`Co-developed-by: ${trailers.CoDevelopedBy}`);
+  }
+  if (trailers.SignedOffBy) {
+    trailerLines.push(`Signed-off-by: ${trailers.SignedOffBy}`);
   }
 
   // Output array for the processed lines
@@ -1094,4 +1204,7 @@ export {
   loadYamlConfig,
   loadGitConfig,
   loadConfig,
+  getSignedOffBy,
+  hasSignedOffBy,
+  needsSignedOffBy,
 };
