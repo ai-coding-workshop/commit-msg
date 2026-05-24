@@ -53,21 +53,7 @@ function createToolEnv(
   return env;
 }
 
-// Check Node.js version to determine which dev script to use
-// Node.js 21+: Use tsx (dev)
-// Node.js 19-20: Use tsx (dev:node20)
-// Node.js 18: Use ts-node with CommonJS (dev:node18)
-// <18: Use ts-node with CommonJS (dev:compat)
-const nodeVersion = process.version;
-const nodeMajorVersion = parseInt(nodeVersion.split('.')[0].replace('v', ''));
-const devScript =
-  nodeMajorVersion >= 21
-    ? 'dev'
-    : nodeMajorVersion <= 20 && nodeMajorVersion > 18
-      ? 'dev:node20'
-      : nodeMajorVersion === 18
-        ? 'dev:node18'
-        : 'dev:compat';
+const devScript = 'dev';
 
 describe('commit-msg CLI npm pack tests', () => {
   const tempDir = path.join(os.tmpdir(), 'commit-msg-pack-test');
@@ -165,14 +151,6 @@ describe('commit-msg CLI npm pack tests', () => {
     // Skip if tarball wasn't created
     if (!tarballPath || !existsSync(tarballPath)) {
       throw new Error('Tarball was not created in previous test');
-    }
-
-    // For Node.js < 20, skip this test as development mode may not work
-    if (nodeMajorVersion < 20) {
-      console.log(
-        `Skipping development mode comparison test for Node.js ${nodeVersion} due to ESM limitations`
-      );
-      return;
     }
 
     // Get version from packed package

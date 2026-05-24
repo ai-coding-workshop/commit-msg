@@ -5,16 +5,5 @@
     "allowImportingTsExtensions": true,
     "module": "ESNext",
     "moduleResolution": "node"
-  },
-  "ts-node": {
-    "experimentalSpecifierResolution": "node",
-    "esm": true,
-    "experimentalResolver": true,
-    "transpileOnly": true,
-    "preferTsExts": true,
-    "compilerOptions": {
-      "module": "ESNext",
-      "moduleResolution": "node"
-    }
   }
 }
