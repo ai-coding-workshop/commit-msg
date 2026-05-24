@@ -10,9 +10,6 @@
     "build": "node scripts/build.js",
     "start": "npx tsx src/bin/commit-msg.ts",
     "dev": "NODE_ENV=development NODE_OPTIONS=--no-warnings npx tsx src/bin/commit-msg.dev.ts",
-    "dev:compat": "NODE_ENV=development NODE_OPTIONS=--no-warnings npx tsx src/bin/commit-msg.dev.ts",
-    "dev:node18": "NODE_ENV=development NODE_OPTIONS=--no-warnings npx tsx src/bin/commit-msg.dev.ts",
-    "dev:node20": "NODE_ENV=development NODE_OPTIONS=--no-warnings npx tsx src/bin/commit-msg.dev.ts",
     "test": "COMMIT_MSG_TEST_NO_GLOBAL_HOOKS=1 vitest run",
     "test:no-hook": "SKIP_HOOK_TESTS=true vitest run",
     "test:hook-only": "COMMIT_MSG_TEST_NO_GLOBAL_HOOKS=1 vitest run test/hook.test.ts",
@@ -36,7 +33,7 @@
   "license": "MIT",
   "description": "A git commit-msg hook which generate Change-Id and Co-developed-by trailers",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "commander": "^13.1.0",
@@ -57,7 +54,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.1.0",
     "prettier": "^3.6.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
