@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-05-24
+
+### Changed
+
+- Drop Node.js < 22 support; minimum required version is now 22.0.0
+- Upgrade major dependencies: TypeScript 6, Vitest 4, commander 14,
+  lint-staged 16
+- Replace ts-node with tsx for all dev scripts (fixes ESM compatibility)
+- Update TypeScript module settings to Node16 (required by TS 6)
+- Simplify CI matrix to Node.js 22.x and 24.x only
+
+### Removed
+
+- Remove `dev:compat`, `dev:node18`, `dev:node20` scripts
+- Remove `ts-node` dependency
+- Remove `tsconfig.node18.json`, `tsconfig.node20.json`,
+  `tsconfig.compat.json`
+
 ## [0.3.0] - 2026-05-23
 
 ### Added
