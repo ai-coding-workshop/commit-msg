@@ -210,6 +210,42 @@ async function install(): Promise<void> {
   } catch (error) {
     throw new Error(`Error installing commit-msg hook: ${error}`);
   }
+
+  // Create default commit-msg.yaml if no config file exists
+  createDefaultConfig();
 }
 
-export { install, getHooksDir, checkForExistingHooksDir };
+const DEFAULT_CONFIG_CONTENT = `# commit-msg hook configuration
+add_change_id: false
+add_co_developed_by: true
+add_signed_off_by: true
+strip_noreply_trailers: "co-authored-by"
+`;
+
+function createDefaultConfig(): void {
+  try {
+    const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    if (result.status !== 0 || !result.stdout) {
+      return;
+    }
+    const rootDir = result.stdout.trim();
+
+    if (
+      fs.existsSync(path.join(rootDir, 'commit-msg.yaml')) ||
+      fs.existsSync(path.join(rootDir, '.commit-msg.yaml'))
+    ) {
+      return;
+    }
+
+    const configPath = path.join(rootDir, 'commit-msg.yaml');
+    fs.writeFileSync(configPath, DEFAULT_CONFIG_CONTENT, 'utf8');
+    console.log(`Created config file: ${configPath}`);
+  } catch (error) {
+    console.warn(`Warning: Could not create config file: ${error}`);
+  }
+}
+
+export { install, getHooksDir, checkForExistingHooksDir, createDefaultConfig };

@@ -6,6 +6,7 @@ import {
   install,
   getHooksDir,
   checkForExistingHooksDir,
+  createDefaultConfig,
 } from '../../src/commands/install';
 
 // Type definitions for child_process mocking
@@ -1184,5 +1185,245 @@ describe('getHooksDir function', () => {
 
     const hooksDir = getHooksDir(mockGitDir);
     expect(hooksDir).toBe(path.join(mockGitDir, 'hooks'));
+  });
+});
+
+describe('createDefaultConfig function', () => {
+  const mockWorkDirRoot = '/path/to/repo';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should create commit-msg.yaml when neither config file exists', () => {
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, 'commit-msg.yaml'))
+        return false;
+      if (filePath === path.join(mockWorkDirRoot, '.commit-msg.yaml'))
+        return false;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.writeFileSync).mockImplementation(((
+      _path: fs.PathLike,
+      _data: string | Buffer,
+      _options?: fs.WriteFileOptions
+    ) => {}) as FsWriteFileSyncMock);
+
+    createDefaultConfig();
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      path.join(mockWorkDirRoot, 'commit-msg.yaml'),
+      expect.stringContaining('add_co_developed_by: true'),
+      'utf8'
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Created config file:')
+    );
+  });
+
+  it('should skip creation when commit-msg.yaml already exists', () => {
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, 'commit-msg.yaml'))
+        return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    createDefaultConfig();
+
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('should skip creation when .commit-msg.yaml already exists', () => {
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, 'commit-msg.yaml'))
+        return false;
+      if (filePath === path.join(mockWorkDirRoot, '.commit-msg.yaml'))
+        return true;
+      return false;
+    }) as FsExistsSyncMock);
+
+    createDefaultConfig();
+
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('should not fail if write fails (warns instead)', () => {
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: mockWorkDirRoot,
+            stderr: '',
+            status: 0,
+            error: undefined,
+            pid: 12345,
+            output: [null, mockWorkDirRoot, ''],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    vi.mocked(fs.existsSync).mockImplementation(((filePath: fs.PathLike) => {
+      if (filePath === path.join(mockWorkDirRoot, 'commit-msg.yaml'))
+        return false;
+      if (filePath === path.join(mockWorkDirRoot, '.commit-msg.yaml'))
+        return false;
+      return false;
+    }) as FsExistsSyncMock);
+
+    vi.mocked(fs.writeFileSync).mockImplementation(((
+      _path: fs.PathLike,
+      _data: string | Buffer,
+      _options?: fs.WriteFileOptions
+    ) => {
+      throw new Error('EACCES: permission denied');
+    }) as FsWriteFileSyncMock);
+
+    expect(() => createDefaultConfig()).not.toThrow();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Could not create config file')
+    );
+  });
+
+  it('should silently return when not in a git repository', () => {
+    vi.mocked(spawnSync).mockImplementation(
+      (command: string, args: string[]) => {
+        if (
+          command === 'git' &&
+          args.includes('rev-parse') &&
+          args.includes('--show-toplevel')
+        ) {
+          return {
+            stdout: '',
+            stderr: 'Not a git repository',
+            status: 128,
+            error: new Error('Not a git repository'),
+            pid: 12345,
+            output: [null, '', 'Not a git repository'],
+            signal: null,
+          } as SpawnSyncReturns<string>;
+        }
+        return {
+          stdout: '',
+          stderr: '',
+          status: 0,
+          error: undefined,
+          pid: 12345,
+          output: [null, '', ''],
+          signal: null,
+        } as SpawnSyncReturns<string>;
+      }
+    );
+
+    expect(() => createDefaultConfig()).not.toThrow();
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 });
