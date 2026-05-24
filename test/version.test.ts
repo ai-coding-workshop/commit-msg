@@ -4,16 +4,13 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Check Node.js version to determine which dev script to use
-// Node.js 22+ and 20: Use tsx (dev and dev:node20 respectively)
-// Node.js 18: Use ts-node with CommonJS (dev:node18)
-// <18: Use ts-node with CommonJS (dev:compat)
+// All dev scripts now use tsx which supports Node.js 18+
 const nodeVersion = process.version;
 const nodeMajorVersion = parseInt(nodeVersion.split('.')[0].replace('v', ''));
 const devScript =
   nodeMajorVersion >= 21
     ? 'dev'
-    : nodeMajorVersion <= 20 && nodeMajorVersion > 18
+    : nodeMajorVersion === 20
       ? 'dev:node20'
       : nodeMajorVersion === 18
         ? 'dev:node18'
@@ -22,46 +19,18 @@ const devScript =
 describe('commit-msg CLI version tests', () => {
   // Test development mode --version
   it('should output version in development mode with correct prefix', () => {
-    try {
-      const output = execSync(`npm run ${devScript} -- --version`, {
-        encoding: 'utf-8',
-      });
-      expect(output).toContain('@ai-coding-workshop/commit-msg:');
-    } catch (error) {
-      // If development mode fails, skip this test for older Node.js versions
-      // Node.js 20+ uses tsx which has better ESM support
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (nodeMajorVersion < 20) {
-        console.log(
-          `Skipping development mode test for Node.js ${nodeVersion} due to ESM limitations: ${errorMessage}`
-        );
-        return;
-      }
-      throw error;
-    }
+    const output = execSync(`npm run ${devScript} -- --version`, {
+      encoding: 'utf-8',
+    });
+    expect(output).toContain('@ai-coding-workshop/commit-msg:');
   });
 
   // Test development mode -v
   it('should output version in development mode with -v parameter', () => {
-    try {
-      const output = execSync(`npm run ${devScript} -- -v`, {
-        encoding: 'utf-8',
-      });
-      expect(output).toContain('@ai-coding-workshop/commit-msg:');
-    } catch (error) {
-      // If development mode fails, skip this test for older Node.js versions
-      // Node.js 20+ uses tsx which has better ESM support
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (nodeMajorVersion < 20) {
-        console.log(
-          `Skipping development mode -v test for Node.js ${nodeVersion} due to ESM limitations: ${errorMessage}`
-        );
-        return;
-      }
-      throw error;
-    }
+    const output = execSync(`npm run ${devScript} -- -v`, {
+      encoding: 'utf-8',
+    });
+    expect(output).toContain('@ai-coding-workshop/commit-msg:');
   });
 
   // Test production mode --version
@@ -90,30 +59,9 @@ describe('commit-msg CLI version tests', () => {
 
   // Test that both modes output the same version
   it('should output the same version in both development and production modes', () => {
-    // For Node.js < 20, skip this test as development mode may not work
-    if (nodeMajorVersion < 20) {
-      console.log(
-        `Skipping version comparison test for Node.js ${nodeVersion} due to ESM limitations`
-      );
-      return;
-    }
-
-    // Try to get development mode version
-    let devOutput: string;
-    try {
-      devOutput = execSync(`npm run ${devScript} -- --version`, {
-        encoding: 'utf-8',
-      }).toString();
-    } catch (error) {
-      // If development mode fails, skip this test
-      // Node.js 20+ uses tsx which should work correctly
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.log(
-        `Skipping version comparison test for Node.js ${nodeVersion} due to error: ${errorMessage}`
-      );
-      return;
-    }
+    const devOutput = execSync(`npm run ${devScript} -- --version`, {
+      encoding: 'utf-8',
+    });
 
     // Build and get production mode version
     execSync('npm run build', { stdio: 'inherit' });
@@ -143,27 +91,20 @@ describe('commit-msg CLI version tests', () => {
 
     expect(vOutput).toBe(versionOutput);
 
-    // Test development mode if supported
-    if (nodeMajorVersion >= 20) {
-      try {
-        const devVersionOutput = execSync(`npm run ${devScript} -- --version`, {
-          encoding: 'utf-8',
-        });
-        const devVOutput = execSync(`npm run ${devScript} -- -v`, {
-          encoding: 'utf-8',
-        });
+    // Test development mode — compare only the version line (npm echoes
+    // the invoked command which differs between -v and --version)
+    const devVersionOutput = execSync(`npm run ${devScript} -- --version`, {
+      encoding: 'utf-8',
+    });
+    const devVOutput = execSync(`npm run ${devScript} -- -v`, {
+      encoding: 'utf-8',
+    });
 
-        expect(devVOutput).toBe(devVersionOutput);
-      } catch (error) {
-        // If development mode fails, skip this test
-        // Node.js 20+ uses tsx which should work correctly
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.log(
-          `Skipping development mode equivalence test for Node.js ${nodeVersion} due to error: ${errorMessage}`
-        );
-      }
-    }
+    const extractVersion = (out: string) =>
+      out
+        .split('\n')
+        .find((l) => l.startsWith('@ai-coding-workshop/commit-msg:'));
+    expect(extractVersion(devVOutput)).toBe(extractVersion(devVersionOutput));
   });
 
   // Test that package.json and package-lock.json versions are in sync
